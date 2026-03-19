@@ -1,0 +1,109 @@
+/* นำเข้า Font เพื่อความสวยงาม */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&family=Kanit:wght@300;500&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Kanit', 'Sarabun', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.main-container {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+/* ส่วนของปุ่มสลับ Login/Register */
+.buttons-container {
+    display: flex;
+    background: #f0f0f0;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    padding: 5px;
+}
+
+.buttons-container button {
+    flex: 1;
+    border: none;
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: transparent;
+    color: #666;
+}
+
+.buttons-container button.active {
+    background: white;
+    color: #764ba2;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* การตกแต่ง Form */
+.login-container, .register-container {
+    text-align: left;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2, h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+}
+
+input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.3s;
+    font-size: 1rem;
+}
+
+input:focus {
+    border-color: #764ba2;
+}
+
+/* ปุ่มกดส่งข้อมูล */
+.btn-login, .btn-reg {
+    margin-top: 1.5rem;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #764ba2;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s,
+
