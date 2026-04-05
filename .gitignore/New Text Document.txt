@@ -1,5 +1,0 @@
-config.php
-/backend/db_connect.php
-.env
-node_modules/
-backend/config.php

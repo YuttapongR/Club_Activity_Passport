@@ -1,0 +1,8 @@
+# Database Credentials
+/backend/config.php
+
+# Environment configs
+.env
+
+# Javascript dependencies (ถ้ามีในอนาคต)
+node_modules/
