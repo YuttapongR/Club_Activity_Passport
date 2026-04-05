@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สมัครสมาชิก - ชมรมของเรา</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* CSS เหมือนกับหน้า login ทุกประการเพื่อให้ UI กลมกลืน */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Kanit', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .main-container {
+            background: #ffffff; width: 100%; max-width: 450px; padding: 40px; border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        h2.title { color: #333; text-align: center; margin-bottom: 25px; font-weight: 600; font-size: 28px; }
+        .buttons-container { display: flex; background: #f0f2f5; padding: 5px; border-radius: 12px; margin-bottom: 30px; }
+        .buttons-container a {
+            flex: 1; text-align: center; text-decoration: none; padding: 12px; font-size: 16px;
+            font-weight: 500; color: #777; transition: all 0.3s ease; border-radius: 10px;
+        }
+        .buttons-container a.active { background: #ffffff; color: #764ba2; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        h3 { font-size: 14px; font-weight: 500; color: #666; margin-bottom: 8px; margin-top: 15px; }
+        input {
+            width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 10px;
+            outline: none; transition: border-color 0.3s; font-size: 15px;
+        }
+        input:focus { border-color: #764ba2; }
+        .btn-submit {
+            width: 100%; padding: 14px; margin-top: 25px; border: none; border-radius: 10px;
+            background: linear-gradient(to right, #667eea, #764ba2); color: white;
+            font-size: 16px; font-weight: 500; cursor: pointer; transition: transform 0.2s;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4); }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h2 class="title">ชมรมของเรา 🌟</h2>
+        
+        <div class="buttons-container">
+            <a href="login.html">เข้าสู่ระบบ</a>
+            <a href="register.html" class="active">สมัครสมาชิก</a>
+        </div>
+
+        <form action="register_db.php" method="POST" class="form-content">
+            <h3>ชื่อ</h3>
+            <input type="text" name="firstname" placeholder="ชื่อจริง" required/>
+            
+            <h3>นามสกุล</h3>
+            <input type="text" name="lastname" placeholder="นามสกุล" required/>
+            
+            <h3>เบอร์โทรศัพท์</h3>
+            <input type="tel" name="phone" placeholder="08x-xxx-xxxx" required/>
+            
+            <h3>อีเมล</h3>
+            <input type="email" name="email" placeholder="example@email.com" required/>
+            
+            <button type="submit" class="btn-submit">ลงชื่อเข้าชมรม</button>
+        </form>
+    </div>
+
+</body>
+</html>
