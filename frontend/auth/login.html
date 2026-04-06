@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สมัครสมาชิก - ชมรมของเรา</title>
+    <title>เข้าสู่ระบบ - ชมรมของเรา</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <style>
-        /* CSS เดิมของคุณ */
+        /* CSS เดิมทั้งหมดเพื่อให้หน้าตาเหมือนเดิม */
         * {
             margin: 0;
             padding: 0;
@@ -119,36 +119,18 @@
         <h2 class="title">ชมรมของเรา 🌟</h2>
 
         <div class="buttons-container">
-            <a href="login.html">เข้าสู่ระบบ</a>
-            <a href="register.html" class="active">สมัครสมาชิก</a>
+            <a href="login.html" class="active">เข้าสู่ระบบ</a>
+            <a href="register.html">สมัครสมาชิก</a>
         </div>
 
-        <form action="../backend/register_db.php" method="POST" class="form-content">
-            <h3>รหัสนักศึกษา</h3>
-            <input type="text" name="student_id" placeholder="รหัสนักศึกษาของคุณ" required />
-
-            <h3>Username</h3>
-            <input type="text" name="username" placeholder="ชื่อผู้ใช้งาน" required />
-
-            <h3>ชื่อ</h3>
-            <input type="text" name="firstname" placeholder="ชื่อจริง" required />
-
-            <h3>นามสกุล</h3>
-            <input type="text" name="lastname" placeholder="นามสกุล" required />
+        <form action="../../backend/auth/login.php" method="POST" class="form-content">
+            <h3>ชื่อผู้ใช้งาน</h3>
+            <input type="text" name="username" placeholder="Username หรือ รหัสนักศึกษา" required />
 
             <h3>รหัสผ่าน</h3>
-            <input type="password" name="password" placeholder="ตั้งรหัสผ่านของคุณ" required />
+            <input type="password" name="password" placeholder="Password" required />
 
-            <h3>ยืนยันรหัสผ่าน</h3>
-            <input type="password" name="confirm_password" placeholder="กรอกรหัสผ่านอีกครั้ง" required />
-
-            <h3>เบอร์โทรศัพท์</h3>
-            <input type="tel" name="phone" placeholder="08x-xxx-xxxx" required />
-
-            <h3>อีเมล</h3>
-            <input type="email" name="email" placeholder="example@email.com" required />
-
-            <button type="submit" name="bt" class="btn-submit">ลงชื่อเข้าชมรม</button>
+            <button type="submit" class="btn-submit">เข้าสู่ระบบ</button>
         </form>
     </div>
 

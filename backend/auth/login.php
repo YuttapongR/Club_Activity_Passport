@@ -1,6 +1,6 @@
 <?php
 session_start();
-include "connect_db.php";
+include "../core/connect_db.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
@@ -21,10 +21,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['username'] = $row['Username'];
         $_SESSION['firstname'] = $row['First_Name'];
         $_SESSION['lastname'] = $row['Last_Name'];
+        $_SESSION['role'] = $row['Role']; // เก็บ Role ลงใน session ด้วย
 
         echo "<script>
             alert('เข้าสู่ระบบสำเร็จ');
-            window.location.href = '../frontend/main.html';
+            window.location.href = '../../frontend/dashboard/main.html';
         </script>";
     } else {
         // ล็อกอินไม่สำเร็จ
