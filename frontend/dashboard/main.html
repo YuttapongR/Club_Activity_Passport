@@ -122,10 +122,10 @@
                         <i class="fas fa-user-friends mr-2"></i> <span class="card-members">0</span>
                     </span>
 
-                    <a href="../../backend/members/join_club.php">
+                    <a href="club_detail.html?id=" class="card-link">
                         <button
                             class="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 active:scale-95 transition shadow-sm">
-                            เข้าร่วมเลย
+                            ดูรายละเอียด
                         </button>
                     </a>
                 </div>
@@ -160,6 +160,7 @@
             clone.querySelector('.card-title').textContent = club.title;
             clone.querySelector('.card-desc').textContent = club.desc;
             clone.querySelector('.card-members').textContent = club.members;
+            clone.querySelector('.card-link').href = `club_detail.html?id=${club.id}`;
             icon.className = `card-icon fas ${club.icon} fa-4x group-hover:scale-110 transition duration-300 z-10`;
 
             return clone;
@@ -180,6 +181,7 @@
                     if (data.status === 'success' && data.data.length > 0) {
                         data.data.forEach(item => {
                             grid.appendChild(createClubCardElement({
+                                id: item.Club_ID,
                                 color: 'from-blue-500 to-indigo-600',
                                 tag: item.Club_type || 'ทั่วไป',
                                 icon: 'fa-users',

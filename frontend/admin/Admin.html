@@ -134,10 +134,51 @@
     </template>
 
     <template id="temp-certs">
-        <h2 class="text-3xl font-bold mb-6">ออกใบรับรอง (Certificate)</h2>
-        <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center">
-            <i class="fas fa-certificate text-5xl text-slate-200 mb-4"></i>
-            <p class="text-slate-500">เลือกกิจกรรมและอัปโหลดรายชื่อเพื่อออกใบรับรอง</p>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-800">ออกใบรับรอง (Certificate)</h2>
+                <p class="text-slate-500">เลือกชมรมและสมาชิกที่ต้องการออกใบรับรองกิจกรรม</p>
+            </div>
+            <div class="w-full md:w-64">
+                <label class="block text-sm font-medium text-slate-700 mb-1">เลือกชมรม</label>
+                <select id="select-cert-club" onchange="loadMembersForCerts(this.value)"
+                    class="w-full border border-slate-200 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
+                    <option value="">-- เลือกชมรม --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+                <span class="font-bold text-slate-600">รายชื่อสมาชิกชมรม</span>
+                <button onclick="handleIssueCerts()" id="btn-issue-certs" disabled
+                    class="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i class="fas fa-certificate"></i> ออกใบรับรองให้คนที่เลือก
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b border-slate-100 text-xs uppercase text-slate-500 font-bold">
+                        <tr>
+                            <th class="px-6 py-4 w-10">
+                                <input type="checkbox" id="select-all-members" onchange="toggleSelectAll(this)"
+                                    class="w-4 h-4 rounded border-slate-300">
+                            </th>
+                            <th class="px-6 py-4">รหัสนักศึกษา</th>
+                            <th class="px-6 py-4">ชื่อสมาชิก</th>
+                            <th class="px-6 py-4">วันที่เข้าร่วม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cert-member-list" class="divide-y divide-slate-50">
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                                <i class="fas fa-users text-4xl mb-2 block"></i>
+                                กรุณาเลือกชมรมเพื่อดูรายชื่อสมาชิก
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </template>
 
@@ -168,6 +209,7 @@
             // เรียกฟังก์ชันโหลดข้อมูลตามหน้า
             if (tabId === 'clubs') loadClubs();
             if (tabId === 'roles') loadRoles();
+            if (tabId === 'certs') loadCertsView();
         }
 
         function loadClubs() {
@@ -223,7 +265,174 @@
         }
 
         function loadRoles() {
-            console.log("Loading roles from database...");
+            const list = document.getElementById('roles-list');
+            if (!list) return;
+
+            list.innerHTML = '<div class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดข้อมูล...</div>';
+
+            fetch('../../backend/clubs/get_roles.php')
+                .then(res => res.json())
+                .then(data => {
+                    list.innerHTML = '';
+                    if (data.status === 'success' && data.data && data.data.length > 0) {
+                        data.data.forEach(item => {
+                            // จัดการแสดงผลข้อมูล โดยเช็คตัวแปรแบบหลวมๆ เผื่อกรณีคอลัมน์แตกต่างกัน
+                            const displayName = item.Username || item.Name || 'ไม่ระบุชื่อ';
+                            const studentId = item.Student_ID || '-';
+                            const role = item.Role || item.role || 'Admin';
+
+                            list.innerHTML += `
+                                <div class="flex items-center justify-between p-4 border-b border-slate-100 hover:bg-slate-50 transition">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                                            <i class="fas fa-user-shield"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-slate-800">${displayName}</div>
+                                            <div class="text-xs text-slate-500">รหัสนักศึกษา: ${studentId} | สิทธิ์: ${role}</div>
+                                        </div>
+                                    </div>
+                                    <button class="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition"
+                                        onclick="removeRole('${studentId}')">
+                                        <i class="fas fa-user-minus"></i> ลบสิทธิ์
+                                    </button>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        list.innerHTML = '<div class="p-8 text-center text-slate-400">ไม่พบรายชื่อผู้มีสิทธิ์จัดการ</div>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching roles:', err);
+                    list.innerHTML = '<div class="p-8 text-center text-red-500">เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูล</div>';
+                });
+        }
+
+        function removeRole(studentId) {
+            if (!confirm('⚠️ ยืนยันการปลดสิทธิ์ผู้จัดการของรหัส ' + studentId + '?')) return;
+
+            fetch(`../../backend/clubs/get_roles.php?remove_id=${studentId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        loadRoles();
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('Remove Role Error:', err);
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                });
+        }
+
+        function loadCertsView() {
+            const selectClub = document.getElementById('select-cert-club');
+            if (!selectClub) return;
+
+            fetch('../../backend/clubs/get_clubs.php')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        selectClub.innerHTML = '<option value="">-- เลือกชมรม --</option>';
+                        data.data.forEach(club => {
+                            const option = document.createElement('option');
+                            option.value = club.Club_ID;
+                            option.textContent = club.Name_Club;
+                            selectClub.appendChild(option);
+                        });
+                    }
+                });
+        }
+
+        function loadMembersForCerts(clubId) {
+            const list = document.getElementById('cert-member-list');
+            const btn = document.getElementById('btn-issue-certs');
+            if (!list) return;
+
+            if (!clubId) {
+                list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">กรุณาเลือกชมรมเพื่อดูรายชื่อสมาชิก</td></tr>';
+                btn.disabled = true;
+                return;
+            }
+
+            list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดรายชื่อสมาชิก...</td></tr>';
+
+            fetch(`../../backend/clubs/get_club_members.php?club_id=${clubId}`)
+                .then(res => res.json())
+                .then(data => {
+                    list.innerHTML = '';
+                    if (data.status === 'success' && data.data.length > 0) {
+                        data.data.forEach(member => {
+                            list.innerHTML += `
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" name="member-checkbox" value="${member.Student_ID}" 
+                                            class="member-cb w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                            onchange="updateIssueButton()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium text-slate-700">${member.Student_ID}</td>
+                                    <td class="px-6 py-4 text-slate-800">${member.Username}</td>
+                                    <td class="px-6 py-4 text-slate-500">${new Date(member.Join_Date).toLocaleDateString('th-TH')}</td>
+                                </tr>
+                            `;
+                        });
+                        btn.disabled = true;
+                    } else {
+                        list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">ยังไม่มีสมาชิกในชมรมนี้</td></tr>';
+                        btn.disabled = true;
+                    }
+                });
+        }
+
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('input[name="member-checkbox"]');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateIssueButton();
+        }
+
+        function updateIssueButton() {
+            const checkboxes = document.querySelectorAll('input[name="member-checkbox"]:checked');
+            const btn = document.getElementById('btn-issue-certs');
+            if (btn) btn.disabled = checkboxes.length === 0;
+        }
+
+        function handleIssueCerts() {
+            const clubId = document.getElementById('select-cert-club').value;
+            const selectedIds = Array.from(document.querySelectorAll('input[name="member-checkbox"]:checked'))
+                .map(cb => cb.value);
+
+            if (selectedIds.length === 0) return;
+
+            if (!confirm(`⚠️ ยืนยันการออกใบรับรองให้กับนักศึกษาจำนวน ${selectedIds.length} ท่าน?`)) return;
+
+            fetch('../../backend/clubs/issue_certs.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    club_id: clubId,
+                    student_ids: selectedIds
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        // ล้างการเลือก
+                        document.querySelectorAll('input[name="member-checkbox"]').forEach(cb => cb.checked = false);
+                        const selAll = document.getElementById('select-all-members');
+                        if (selAll) selAll.checked = false;
+                        updateIssueButton();
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('Issue Certs Error:', err);
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                });
         }
 
         // เริ่มต้นทำงาน

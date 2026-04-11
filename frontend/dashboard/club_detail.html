@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายละเอียดชมรม - ClubHub</title>
+    <!-- CSS Resources -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.7) 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- Sticky Header / Back Button -->
+    <nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-4" id="main-nav">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="main.html"
+                class="bg-white/90 hover:bg-white text-slate-800 p-2.5 rounded-full shadow-lg transition-transform hover:-translate-x-1 group">
+                <i class="fas fa-chevron-left mr-1 transition-transform group-hover:-translate-x-0.5"></i> กลับหน้าหลัก
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content wrapper -->
+    <div id="loading-spinner" class="flex items-center justify-center min-h-screen">
+        <div class="text-center">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-600 mb-4"></i>
+            <p class="text-slate-500">กำลังโหลดข้อมูลชมรม...</p>
+        </div>
+    </div>
+
+    <div id="content" class="hidden fade-in">
+        <!-- Hero Section -->
+        <header class="relative h-[400px] w-full bg-slate-200 overflow-hidden">
+            <img id="club-banner" src="" alt="Club Banner" class="w-full h-full object-cover">
+            <div class="absolute inset-0 hero-gradient flex flex-col justify-end p-6 md:p-12">
+                <div class="container mx-auto">
+                    <span id="club-type"
+                        class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium mb-4 inline-block shadow-lg">หมวดหมู่</span>
+                    <h1 id="club-title"
+                        class="text-4xl md:text-6xl font-bold text-white drop-shadow-md mb-2 leading-tight">ชื่อชมรม
+                    </h1>
+                </div>
+            </div>
+        </header>
+
+        <!-- Details Section -->
+        <main class="container mx-auto px-6 py-12">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+                <!-- Left Column: Info & Description -->
+                <div class="lg:col-span-2 space-y-10">
+                    <section class="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-blue-600 rounded-full"></span>
+                            เกี่ยวกับชมรม
+                        </h2>
+                        <p id="club-description" class="text-slate-600 leading-relaxed text-lg whitespace-pre-line">
+                            รายละเอียดชมรม...
+                        </p>
+                    </section>
+
+                    <section class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div class="bg-blue-50 p-6 rounded-3xl border border-blue-100 text-center">
+                            <i class="fas fa-users text-blue-500 text-2xl mb-3"></i>
+                            <div class="text-sm text-slate-500 font-medium">สมาชิกปัจจุบัน</div>
+                            <div id="current-members" class="text-2xl font-bold text-blue-700">0 คน</div>
+                        </div>
+                        <div class="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 text-center">
+                            <i class="fas fa-user-plus text-indigo-500 text-2xl mb-3"></i>
+                            <div class="text-sm text-slate-500 font-medium">รับได้สูงสุด</div>
+                            <div id="max-members" class="text-2xl font-bold text-indigo-700">ไม่จำกัด</div>
+                        </div>
+                        <div class="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 text-center">
+                            <i class="fas fa-check-circle text-emerald-500 text-2xl mb-3"></i>
+                            <div class="text-sm text-slate-500 font-medium">สถานะ</div>
+                            <div id="club-status" class="text-2xl font-bold text-emerald-700">เปิดรับสมัคร</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column: Actions -->
+                <div class="lg:col-span-1">
+                    <div class="sticky top-28 bg-white rounded-3xl p-8 shadow-xl border border-slate-100">
+                        <h3 class="text-xl font-bold mb-6">ดำเนินการเข้าร่วม</h3>
+
+                        <div id="auth-section" class="space-y-4">
+                            <!-- จะถูกใส่ด้วย JavaScript -->
+                            <button id="join-btn" onclick="handleJoin()"
+                                class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition active:translate-y-0 disabled:bg-slate-300 disabled:shadow-none disabled:transform-none">
+                                เข้าร่วมชมรมเลย
+                            </button>
+                            <p class="text-xs text-slate-400 text-center px-4">
+                                เมื่อเข้าร่วมสมาขิกแล้ว คุณจะสามารถสะสมคะแนนกิจกรรมและรับใบเซอร์ได้ตามเงื่อนไขของทางชมรม
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Logic -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const clubId = urlParams.get('id');
+
+        if (!clubId) {
+            window.location.href = 'main.html';
+        }
+
+        async function fetchClubDetails() {
+            try {
+                const response = await fetch(`../../backend/clubs/get_club_detail.php?club_id=${clubId}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    renderClub(data);
+                } else {
+                    alert(data.message);
+                    window.location.href = 'main.html';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('ไม่สามารถโหลดข้อมูลได้');
+            }
+        }
+
+        function renderClub(res) {
+            const club = res.data;
+            const isMember = res.is_member;
+            const currentMembers = res.current_members;
+
+            // Header & Banner
+            document.getElementById('club-banner').src = club.Club_Image ? `../../uploads/${club.Club_Image}` : '../../uploads/default_club.png';
+            document.getElementById('club-title').innerText = club.Name_Club;
+            document.getElementById('club-type').innerText = club.Club_type || 'ทั่วไป';
+
+            // Description
+            document.getElementById('club-description').innerText = club.Description || 'ไม่มีคำอธิบายสำหรับชมรมนี้';
+
+            // Stats
+            document.getElementById('current-members').innerText = `${currentMembers} คน`;
+            document.getElementById('max-members').innerText = club.Member === 'ไม่จำกัด' ? 'ไม่จำกัด' : `${club.Member} คน`;
+
+            // Join Button Logic
+            const joinBtn = document.getElementById('join-btn');
+            if (isMember) {
+                joinBtn.innerText = 'คุณเป็นสมาชิกแล้ว';
+                joinBtn.className = 'w-full bg-emerald-100 text-emerald-700 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2';
+                joinBtn.innerHTML = '<i class="fas fa-check"></i> คุณเป็นสมาชิกแล้ว';
+                joinBtn.disabled = true;
+            } else if (club.Member !== 'ไม่จำกัด' && currentMembers >= parseInt(club.Member)) {
+                joinBtn.innerText = 'สมาชิกเต็มแล้ว';
+                joinBtn.disabled = true;
+                document.getElementById('club-status').innerText = 'สมาชิกเต็ม';
+                document.getElementById('club-status').className = 'text-2xl font-bold text-rose-700';
+            }
+
+            // Show Content
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('content').classList.remove('hidden');
+        }
+
+        function handleJoin() {
+            if (confirm('คุณต้องการเข้าร่วมชมรมนี้ใช่หรือไม่?')) {
+                // สำหรับตอนนี้ใช้ลิ้งก์ตรงไปยัง join_club.php
+                window.location.href = `../../backend/members/join_club.php?club_id=${clubId}`;
+            }
+        }
+
+        // Change nav background on scroll
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('main-nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-white/90', 'shadow-md', 'backdrop-blur-md');
+            } else {
+                nav.classList.remove('bg-white/90', 'shadow-md', 'backdrop-blur-md');
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', fetchClubDetails);
+    </script>
+</body>
+
+</html>

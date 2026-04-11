@@ -1,4 +1,5 @@
 <?php
+header('Content-Type: application/json');
 include '../core/connect_db.php';
 
 // เปลี่ยนมารับค่าจาก GET (ส่งผ่าน URL)

@@ -3,34 +3,49 @@
 include "../core/connect_db.php";
 
 if (isset($_REQUEST['saveclub'])) {
-    $nameclub = $_REQUEST['club_name'];
-    $desc = $_REQUEST['description'];
-    $clubtype = $_REQUEST['category'];
-    $member = $_REQUEST['max_members'];
+    // ป้องกัน SQL Injection โดยการใช้ mysqli_real_escape_string
+    $nameclub = mysqli_real_escape_string($conn, $_POST['club_name']);
+    $desc = mysqli_real_escape_string($conn, $_POST['description']);
+    $clubtype = mysqli_real_escape_string($conn, $_POST['category']);
+    $member = !empty($_POST['max_members']) ? mysqli_real_escape_string($conn, $_POST['max_members']) : 'ไม่จำกัด';
 
-    // ตั้งค่าเบื้องต้นให้เป็นค่าว่างเผื่อไม่ได้อัปโหลดรูป
-    $image = "";
+    // ตั้งค่าเริ่มต้นของรูปภาพ (ใช้ค่า default_club.png หากไม่มีการอัปโหลดหรืออัปโหลดไม่สำเร็จ)
+    $image = "default_club.png";
 
     // จัดการการอัปโหลดไฟล์ภาพ
     if (isset($_FILES['club_image']) && $_FILES['club_image']['error'] == 0) {
         $target_dir = "../../uploads/";
+
+        // ตรวจสอบว่ามีโฟลเดอร์ uploads หรือยัง ถ้าไม่มีให้สร้าง
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
-        $image = basename($_FILES["club_image"]["name"]);
-        $target_file = $target_dir . time() . "_" . $image;
+
+        $original_filename = basename($_FILES["club_image"]["name"]);
+        $file_extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
+
+        // สุ่มชื่อไฟล์ใหม่เพื่อป้องกันชื่อซ้ำ
+        $new_filename = time() . "_" . bin2hex(random_bytes(4)) . "." . $file_extension;
+        $target_file = $target_dir . $new_filename;
+
+        // ดำเนินการย้ายไฟล์จาก temp ไปยังโฟลเดอร์เป้าหมาย
         if (move_uploaded_file($_FILES["club_image"]["tmp_name"], $target_file)) {
-            $image = time() . "_" . $image; // เปลี่ยนชื่อไฟล์เพื่อไม่ให้ซ้ำในฐานข้อมูล
+            $image = $new_filename;
         }
     }
 
-    $sql = "INSERT INTO club (Name_Club, Description, Club_type, Member, Club_image) VALUES ('$nameclub', '$desc', '$clubtype', '$member', '$image')";
+    // ปรับชื่อคอลัมน์ให้ตรงตาม Database (Club_Image พิมพ์ใหญ่ตัว I)
+    $sql = "INSERT INTO club (Name_Club, Description, Club_type, Member, Club_Image) 
+            VALUES ('$nameclub', '$desc', '$clubtype', '$member', '$image')";
+
     $result = mysqli_query($conn, $sql);
 
     if ($result) {
         echo "<script>alert('สร้างชมรมสำเร็จ'); window.location.href= '../../frontend/admin/Admin.html';</script>";
     } else {
-        echo "<script>alert('สร้างชมรมไม่สำเร็จ'); window.history.back();</script>";
+        // หากล้มเหลว ให้แจ้งเตือนและกลับไปหน้าเดิม
+        $error_msg = mysqli_error($conn);
+        echo "<script>alert('สร้างชมรมไม่สำเร็จ: " . addslashes($error_msg) . "'); window.history.back();</script>";
     }
 }
 
