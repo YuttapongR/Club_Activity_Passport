@@ -115,19 +115,28 @@
                 <!-- Club Image Cover/Logo -->
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">โปสเตอร์ / โลโก้ชมรม</label>
-                    <div
-                        class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer relative group">
+                    <div id="upload-box"
+                        class="mt-1 flex flex-col justify-center items-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer relative group overflow-hidden">
+                        
+                        <!-- Image Preview -->
+                        <div id="preview-container" class="hidden absolute inset-0 z-10 bg-white">
+                            <img id="preview-img" src="#" alt="Preview" class="w-full h-full object-contain">
+                            <button type="button" onclick="removeImage(event)" 
+                                class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all z-20">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
                         <div class="space-y-2 text-center">
                             <i
                                 class="fas fa-cloud-upload-alt text-3xl text-slate-400 group-hover:text-blue-500 transition-colors"></i>
                             <div class="flex text-sm text-slate-600 justify-center">
-                                <label for="club_image"
-                                    class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                                <span class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
                                     <span>อัปโหลดรูปภาพ</span>
                                     <input id="club_image" name="club_image" type="file" class="sr-only"
                                         accept="image/*">
-                                </label>
-                                <p class="pl-1">หรือลากวางที่นี่</p>
+                                </span>
+                                <p id="file-name-label" class="pl-1">หรือลากวางที่นี่</p>
                             </div>
                             <p class="text-xs text-slate-500">PNG, JPG หรือ GIF ขนาดไม่เกิน 5MB</p>
                         </div>
@@ -167,15 +176,44 @@
     </footer>
 
     <script>
-        // ทำให้อัปโหลดไฟล์โชว์ชื่อไฟล์ได้
-        document.getElementById('club_image').addEventListener('change', function (e) {
-            const fileName = e.target.files[0]?.name;
-            if (fileName) {
-                const label = this.parentElement.nextElementSibling;
-                label.textContent = "เลือกไฟล์แล้ว: " + fileName;
-                label.classList.add('text-blue-600');
+        const uploadBox = document.getElementById('upload-box');
+        const fileInput = document.getElementById('club_image');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview-img');
+        const fileNameLabel = document.getElementById('file-name-label');
+
+        // คลิกที่กล่องแล้วให้เรียกใช้ file input
+        uploadBox.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // จัดการเมื่อมีการเลือกไฟล์
+        fileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                // แสดงชื่อไฟล์
+                fileNameLabel.textContent = "เลือกไฟล์แล้ว: " + file.name;
+                fileNameLabel.classList.add('text-blue-600');
+
+                // แสดงรูปตัวอย่าง
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    previewImg.src = event.target.result;
+                    previewContainer.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
             }
         });
+
+        // ฟังก์ชันลบรูปที่เลือก
+        function removeImage(event) {
+            event.stopPropagation(); // ไม่ให้ไป trigger uploadBox click
+            fileInput.value = '';
+            previewContainer.classList.add('hidden');
+            previewImg.src = '#';
+            fileNameLabel.textContent = "หรือลากวางที่นี่";
+            fileNameLabel.classList.remove('text-blue-600');
+        }
     </script>
 </body>
 

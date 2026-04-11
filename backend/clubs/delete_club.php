@@ -18,7 +18,7 @@ if (isset($_GET['id'])) {
 
     $sql = "DELETE FROM club WHERE Club_ID = '$club_id'";
     if (mysqli_query($conn, $sql)) {
-        echo "<script>alert('ลบชมรมสำเร็จ'); window.location.href = '../../frontend/admin/Admin.html';</script>";
+        echo "<script>alert('ลบชมรมสำเร็จ'); window.location.href= '../../frontend/admin/Admin.html';</script>";
     } else {
         echo "<script>alert('ลบชมรมไม่สำเร็จ'); window.location.href = '../../frontend/admin/Admin.html';</script>";
     }
