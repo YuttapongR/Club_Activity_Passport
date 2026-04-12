@@ -6,3 +6,8 @@
 
 # Javascript dependencies (ถ้ามีในอนาคต)
 node_modules/
+
+# ไม่ติดตามไฟล์ .jpg ทุกไฟล์ในโฟลเดอร์นี้
+*.jpg
+*.png
+*.jpeg
