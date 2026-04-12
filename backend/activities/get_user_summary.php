@@ -20,7 +20,7 @@ $total_hours = $user_data['Total_Hours'] ?? 0;
 $activities_sql = "SELECT a.Activity_Name, a.Hours_Given, c.Checkin_Time, cl.Name_Club
                    FROM activity_checkins c
                    JOIN activities a ON c.Activity_ID = a.Activity_ID
-                   JOIN club cl ON a.Club_ID = cl.Club_ID
+                   LEFT JOIN club cl ON a.Club_ID = cl.Club_ID
                    WHERE c.Student_ID = '$student_id'
                    ORDER BY c.Checkin_Time DESC";
 

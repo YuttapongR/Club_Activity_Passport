@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 $club_id = isset($_GET['club_id']) ? mysqli_real_escape_string($conn, $_GET['club_id']) : null;
 
 $sql = "SELECT * FROM activities";
-if ($club_id) {
+if ($club_id !== null && $club_id !== '') {
     $sql .= " WHERE Club_ID = '$club_id'";
 }
 $sql .= " ORDER BY Activity_Date DESC";
