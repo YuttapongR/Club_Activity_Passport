@@ -1,8 +1,16 @@
 # Database Credentials
-/backend/config.php
+/backend/core/config.php
+/backend/core/config.py
 
 # Environment configs
 .env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
 
 # Javascript dependencies (ถ้ามีในอนาคต)
 node_modules/

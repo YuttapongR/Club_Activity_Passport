@@ -55,7 +55,7 @@
                     <i class="fas fa-shield-alt mr-2"></i>โหมด Admin
                 </button>
                 <div class="w-px h-6 bg-white/30"></div>
-                <a href="../../backend/auth/logout.php"
+                <a href="/api/auth/logout"
                     class="px-4 py-2 rounded-lg font-medium hover:bg-white/10 transition text-red-100 hover:text-white">
                     <i class="fas fa-sign-out-alt mr-2"></i>ออกจากระบบ
                 </a>
@@ -246,7 +246,7 @@
     <script>
         // ฟังก์ชันตรวจสอบการล็อกอิน
         function checkAuth() {
-            fetch('../../backend/auth/check_auth.php')
+            fetch('/api/auth/check')
                 .then(res => res.json())
                 .then(data => {
                     if (data.status !== 'success' || data.role !== 'admin') {
@@ -280,7 +280,7 @@
 
             list.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดข้อมูล...</td></tr>';
 
-            fetch('../../backend/clubs/get_clubs.php')
+            fetch('/api/clubs/list')
                 .then(res => res.json())
                 .then(data => {
                     list.innerHTML = '';
@@ -291,7 +291,7 @@
                                     <td class="px-6 py-4 font-medium text-slate-900 border-b border-slate-100">${item.Club_ID}</td>
                                     <td class="px-6 py-4 font-bold text-blue-600 border-b border-slate-100">
                                         <div class="flex items-center gap-3">
-                                            ${item.Club_Image ? `<img src="../../uploads/${item.Club_Image}" class="w-10 h-10 rounded-lg object-cover bg-slate-200">` : `<div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-500 flex items-center justify-center"><i class="fas fa-users"></i></div>`}
+                                            ${item.Club_Image ? `<img src="/uploads/${item.Club_Image}" class="w-10 h-10 rounded-lg object-cover bg-slate-200">` : `<div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-500 flex items-center justify-center"><i class="fas fa-users"></i></div>`}
                                             <span>${item.Name_Club}</span>
                                         </div>
                                     </td>
@@ -306,7 +306,7 @@
                                                <i class="fas fa-edit"></i> แก้ไข
                                             </a>
 
-                                            <a href="../../backend/clubs/delete_club.php?id=${item.Club_ID}" 
+                                            <a href="/api/clubs/delete?id=${item.Club_ID}" 
                                                class="btn-action btn-delete inline-block px-3 py-1.5 bg-red-100 text-red-600 rounded hover:bg-red-500 hover:text-white transition"
                                                onclick="return confirm('⚠️ ยืนยันการลบข้อมูลชมรมนี้?');">
                                                <i class="fas fa-trash-alt"></i> ลบ
@@ -332,7 +332,7 @@
 
             list.innerHTML = '<div class="p-8 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดข้อมูล...</div>';
 
-            fetch('../../backend/clubs/get_roles.php')
+            fetch('/api/clubs/roles')
                 .then(res => res.json())
                 .then(data => {
                     list.innerHTML = '';
@@ -374,7 +374,7 @@
         function removeRole(studentId) {
             if (!confirm('⚠️ ยืนยันการปลดสิทธิ์ผู้จัดการของรหัส ' + studentId + '?')) return;
 
-            fetch(`../../backend/clubs/get_roles.php?remove_id=${studentId}`)
+            fetch(`/api/clubs/roles?remove_id=${studentId}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -394,7 +394,7 @@
             const selectClub = document.getElementById('select-cert-club');
             if (!selectClub) return;
 
-            fetch('../../backend/clubs/get_clubs.php')
+            fetch('/api/clubs/list')
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -422,7 +422,7 @@
 
             list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดรายชื่อสมาชิก...</td></tr>';
 
-            fetch(`../../backend/clubs/get_club_members.php?club_id=${clubId}`)
+            fetch(`/api/clubs/members?club_id=${clubId}`)
                 .then(res => res.json())
                 .then(data => {
                     list.innerHTML = '';
@@ -470,7 +470,7 @@
 
             if (!confirm(`⚠️ ยืนยันการออกใบรับรองให้กับนักศึกษาจำนวน ${selectedIds.length} ท่าน?`)) return;
 
-            fetch('../../backend/clubs/issue_certs.php', {
+            fetch('/api/clubs/issue_certs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -503,7 +503,7 @@
 
             list.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลด...</td></tr>';
 
-            fetch(`../../backend/activities/get_activities.php`)
+            fetch(`/api/activities/list`)
                 .then(res => res.json())
                 .then(data => {
                     list.innerHTML = '';
@@ -552,7 +552,7 @@
                 return;
             }
 
-            fetch('../../backend/activities/create_activity.php', {
+            fetch('/api/activities/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -581,7 +581,7 @@
         function handleDeleteActivity(id) {
             if (!confirm('ยืนยันที่จะลบกิจกรรมนี้? (ข้อมูลการเช็คอินจะหายไปด้วย)')) return;
 
-            fetch('../../backend/activities/delete_activity.php', {
+            fetch('/api/activities/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ activity_id: id })

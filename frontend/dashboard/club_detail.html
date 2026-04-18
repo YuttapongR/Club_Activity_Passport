@@ -146,7 +146,7 @@
 
         async function fetchClubDetails() {
             try {
-                const response = await fetch(`../../backend/clubs/get_club_detail.php?club_id=${clubId}`);
+                const response = await fetch(`/api/clubs/detail?club_id=${clubId}`);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -167,7 +167,7 @@
             const currentMembers = res.current_members;
 
             // Header & Banner
-            document.getElementById('club-banner').src = club.Club_Image ? `../../uploads/${club.Club_Image}` : '../../uploads/default_club.png';
+            document.getElementById('club-banner').src = club.Club_Image ? `/uploads/${club.Club_Image}` : '/uploads/default_club.png';
             document.getElementById('club-title').innerText = club.Name_Club;
             document.getElementById('club-type').innerText = club.Club_type || 'ทั่วไป';
 
@@ -199,8 +199,8 @@
 
         function handleJoin() {
             if (confirm('คุณต้องการเข้าร่วมชมรมนี้ใช่หรือไม่?')) {
-                // สำหรับตอนนี้ใช้ลิ้งก์ตรงไปยัง join_club.php
-                window.location.href = `../../backend/members/join_club.php?club_id=${clubId}`;
+                // ลิ้งก์ตรงไปยัง API join club
+                window.location.href = `/api/members/join?club_id=${clubId}`;
             }
         }
 

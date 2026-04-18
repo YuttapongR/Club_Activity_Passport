@@ -2,9 +2,17 @@ services:
   web:
     build: .
     ports:
-      - "8080:80"
+      - "5000:5000"
     volumes:
-      - .:/var/www/html
+      - .:/app
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=club_system
+      - SECRET_KEY=club_system_secret_key_2026
+    depends_on:
+      - db
     networks:
       - app-network
 

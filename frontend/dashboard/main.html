@@ -57,7 +57,7 @@
                     <i class="fas fa-shield-alt mr-2"></i>โหมด Admin
                 </a>
                 <!-- Logout Button -->
-                <a href="../../backend/auth/logout.php"
+                <a href="/api/auth/logout"
                     class="px-4 py-2 rounded-lg font-medium hover:bg-white/10 transition text-red-100 hover:text-white">
                     <i class="fas fa-sign-out-alt mr-2"></i>ออกจากระบบ
                 </a>
@@ -70,7 +70,8 @@
 
         <!-- User Stats Section -->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div class="md:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-100 flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
+            <div
+                class="md:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-100 flex flex-col md:flex-row justify-between items-center relative overflow-hidden group">
                 <div class="relative z-10">
                     <h2 class="text-lg opacity-80 font-medium mb-1">ชั่วโมงกิจกรรมสะสมของคุณ</h2>
                     <div class="flex items-baseline gap-2">
@@ -88,11 +89,14 @@
                     </button>
                 </div>
                 <!-- Abstract Background Shapes -->
-                <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition duration-700"></div>
+                <div
+                    class="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition duration-700">
+                </div>
                 <div class="absolute -left-8 -top-8 w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl"></div>
             </div>
 
-            <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-center items-center text-center">
+            <div
+                class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-center items-center text-center">
                 <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4">
                     <i class="fas fa-calendar-check text-2xl"></i>
                 </div>
@@ -109,6 +113,7 @@
             <div>
                 <h2 class="text-3xl font-bold text-slate-800 mb-2">ชมรมที่เปิดรับสมัคร</h2>
                 <p class="text-slate-500">ค้นพบสิ่งใหม่ๆ และร่วมเป็นส่วนหนึ่งของชุมชนของเรา</p>
+                <p id="search-result-count" class="text-blue-600 font-medium mt-2 hidden"></p>
             </div>
 
             <div class="relative w-full md:w-72">
@@ -189,7 +194,7 @@
             if (club.color) header.className = `card-header h-44 flex items-center justify-center text-white relative bg-gradient-to-br ${club.color}`;
 
             if (club.customImage?.trim()) {
-                header.style.backgroundImage = `url('../../uploads/${club.customImage}')`;
+                header.style.backgroundImage = `url('/uploads/${club.customImage}')`;
                 header.style.backgroundSize = 'cover';
                 header.style.backgroundPosition = 'center';
                 overlay.classList.remove('hidden');
@@ -207,18 +212,37 @@
             return clone;
         }
 
-        function loadClubData() {
+        function loadClubData(query = '') {
             const grid = document.getElementById('club-grid');
+            const resultCount = document.getElementById('search-result-count');
+
             grid.innerHTML = `
                 <div class="col-span-full text-center py-20 text-slate-400">
                     <i class="fas fa-spinner fa-spin text-5xl mb-4 block"></i>
-                    <p>กำลังโหลดข้อมูลชมรม...</p>
+                    <p>กำลังค้นหาชมรม...</p>
                 </div>`;
 
-            fetch('../../backend/clubs/get_clubs.php')
-                .then(res => res.json())
+            fetch(`/api/members/search?q=${encodeURIComponent(query)}`)
+                .then(async res => {
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Invalid JSON response:', text);
+                        throw new Error('Invalid JSON response');
+                    }
+                })
                 .then(data => {
                     grid.innerHTML = '';
+
+                    // แสดงจำนวนผลการค้นหา
+                    if (query && data.status === 'success') {
+                        resultCount.textContent = `พบชมรมทั้งหมด ${data.count} รายการ`;
+                        resultCount.classList.remove('hidden');
+                    } else {
+                        resultCount.classList.add('hidden');
+                    }
+
                     if (data.status === 'success' && data.data.length > 0) {
                         data.data.forEach(item => {
                             grid.appendChild(createClubCardElement({
@@ -233,21 +257,27 @@
                             }));
                         });
                     } else {
-                        grid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400"><p>ยังไม่มีข้อมูลชมรม</p></div>';
+                        grid.innerHTML = `
+                            <div class="col-span-full text-center py-20 text-slate-400">
+                                <i class="fas fa-search text-5xl mb-4 block"></i>
+                                <p>${query ? 'ไม่พบชมรมที่คุณค้นหา' : 'ยังไม่มีข้อมูลชมรม'}</p>
+                            </div>`;
                     }
                 })
-                .catch(() => {
-                    grid.innerHTML = '<div class="col-span-full text-center py-20 text-red-400"><p>ไม่สามารถโหลดข้อมูลได้</p></div>';
+                .catch((err) => {
+                    console.error('Fetch error:', err);
+                    grid.innerHTML = '<div class="col-span-full text-center py-20 text-red-400"><p>ไม่สามารถโหลดข้อมูลได้ (ตรวจสอบ Console)</p></div>';
                 });
         }
 
+
         function loadUserSummary() {
-            fetch('../../backend/activities/get_user_summary.php')
+            fetch('/api/activities/summary')
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
                         document.getElementById('user-total-hours').innerText = parseFloat(data.total_hours).toFixed(1);
-                        
+
                         const historyList = document.getElementById('recent-history');
                         if (data.history && data.history.length > 0) {
                             historyList.innerHTML = '';
@@ -271,13 +301,13 @@
             const code = prompt('กรุณากรอกรหัสเช็คอิน (6 หลัก):');
             if (code && code.trim().length > 0) {
                 try {
-                    const response = await fetch('../../backend/activities/checkin.php', {
+                    const response = await fetch('/api/activities/checkin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code: code.toUpperCase().trim() })
                     });
                     const data = await response.json();
-                    
+
                     if (data.status === 'success') {
                         alert('🎉 ' + data.message);
                         loadUserSummary(); // Refresh stats
@@ -292,7 +322,19 @@
 
         // -- Event Listeners --
         document.addEventListener('DOMContentLoaded', () => {
-            fetch('../../backend/auth/check_auth.php')
+            // Search Input Logic
+            let searchTimeout;
+            const searchInput = document.getElementById('search-input');
+
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value;
+                searchTimeout = setTimeout(() => {
+                    loadClubData(query);
+                }, 300); // ดีเลย์ 300ms เพื่อประหยัดทรัพยากร server
+            });
+
+            fetch('/api/auth/check')
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
