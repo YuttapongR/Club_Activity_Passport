@@ -12,5 +12,5 @@ COPY . .
 # Expose port 5000
 EXPOSE 5000
 
-# Run Flask app
-CMD ["python", "-m", "backend.app"]
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "5000"]

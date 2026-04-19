@@ -1,32 +1,32 @@
-from flask import Blueprint, request, session, jsonify
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
 
 from backend.core.database import get_db_connection
 
-members_bp = Blueprint('members', __name__)
+router = APIRouter()
 
 
-@members_bp.route('/join', methods=['GET'])
-def join_club():
+@router.get("/join", response_class=HTMLResponse)
+def join_club(request: Request, club_id: str = None):
     """เข้าร่วมชมรม"""
     # ตรวจสอบว่าล็อกอินหรือยัง
-    if 'student_id' not in session:
-        return """<script>
+    if 'student_id' not in request.session:
+        return HTMLResponse("""<script>
             alert('กรุณาเข้าสู่ระบบก่อนเข้าร่วมชมรม');
             window.location.href = '/frontend/auth/login.html';
-        </script>"""
+        </script>""")
 
-    student_id = session['student_id']
-    club_id = request.args.get('club_id')
+    student_id = request.session['student_id']
 
     if not club_id:
-        return """<script>
+        return HTMLResponse("""<script>
             alert('ไม่พบรหัสชมรม');
             window.history.back();
-        </script>"""
+        </script>""")
 
     conn = get_db_connection()
     if not conn:
-        return "<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>"
+        return HTMLResponse("<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>")
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -36,10 +36,10 @@ def join_club():
             (student_id, club_id)
         )
         if cursor.fetchone():
-            return """<script>
+            return HTMLResponse("""<script>
                 alert('คุณเป็นสมาชิกชมรมนี้อยู่แล้ว');
                 window.history.back();
-            </script>"""
+            </script>""")
 
         # ตรวจสอบจำนวนสมาชิก (ถ้ามีการจำกัด)
         cursor.execute("SELECT Member FROM club WHERE Club_ID = %s", (club_id,))
@@ -51,10 +51,10 @@ def join_club():
             try:
                 max_members = int(club_data['Member'])
                 if count_data and count_data['total'] >= max_members:
-                    return """<script>
+                    return HTMLResponse("""<script>
                         alert('ขออภัย ชมรมนี้มีสมาชิกเต็มแล้ว');
                         window.history.back();
-                    </script>"""
+                    </script>""")
             except (ValueError, TypeError):
                 pass
 
@@ -64,30 +64,28 @@ def join_club():
             (student_id, club_id)
         )
         conn.commit()
-        return f"""<script>
+        return HTMLResponse(f"""<script>
             alert('ดำเนินการเข้าร่วมชมรมสำเร็จ');
             window.location.href = '/frontend/dashboard/club_detail.html?id={club_id}';
-        </script>"""
+        </script>""")
     except Exception as e:
         conn.rollback()
         error_msg = str(e).replace("'", "\\'")
-        return f"""<script>
+        return HTMLResponse(f"""<script>
             alert('เกิดข้อผิดพลาด: {error_msg}');
             window.history.back();
-        </script>"""
+        </script>""")
     finally:
         cursor.close()
         conn.close()
 
 
-@members_bp.route('/search', methods=['GET'])
-def search_club():
+@router.get("/search")
+def search_club(q: str = ""):
     """ค้นหาชมรมจากชื่อหรือรายละเอียด"""
-    q = request.args.get('q', '')
-
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'DB connection failed'})
+        return {'status': 'error', 'message': 'DB connection failed'}
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -95,7 +93,7 @@ def search_club():
         search_term = f"%{q}%"
         cursor.execute(sql, (search_term, search_term))
         clubs = cursor.fetchall()
-        return jsonify({'status': 'success', 'data': clubs, 'count': len(clubs)})
+        return {'status': 'success', 'data': clubs, 'count': len(clubs)}
     finally:
         cursor.close()
         conn.close()

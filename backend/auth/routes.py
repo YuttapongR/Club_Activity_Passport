@@ -1,19 +1,17 @@
-from flask import Blueprint, request, session, jsonify, redirect
+from fastapi import APIRouter, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from backend.core.database import get_db_connection
 
-auth_bp = Blueprint('auth', __name__)
+router = APIRouter()
 
 
-@auth_bp.route('/login', methods=['POST'])
-def login():
+@router.post("/login", response_class=HTMLResponse)
+def login(request: Request, username: str = Form(...), password: str = Form(...)):
     """ล็อกอิน — รับ form data (username, password)"""
-    username = request.form.get('username', '')
-    password = request.form.get('password', '')
-
     conn = get_db_connection()
     if not conn:
-        return "<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>"
+        return HTMLResponse("<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>")
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -23,44 +21,46 @@ def login():
 
         if row:
             # ล็อกอินสำเร็จ — เก็บข้อมูลลง session
-            session['student_id'] = row['Student_ID']
-            session['username'] = row['Username']
-            session['firstname'] = row['First_Name']
-            session['lastname'] = row['Last_Name']
-            session['role'] = row.get('Role', 'user')
+            request.session['student_id'] = row['Student_ID']
+            request.session['username'] = row['Username']
+            request.session['firstname'] = row['First_Name']
+            request.session['lastname'] = row['Last_Name']
+            request.session['role'] = row.get('Role', 'user')
 
-            return """<script>
+            return HTMLResponse("""<script>
                 alert('เข้าสู่ระบบสำเร็จ');
                 window.location.href = '/frontend/dashboard/main.html';
-            </script>"""
+            </script>""")
         else:
-            return """<script>
+            return HTMLResponse("""<script>
                 alert('ชื่อผู้ใช้งาน หรือ รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
                 window.history.back();
-            </script>"""
+            </script>""")
     finally:
         cursor.close()
         conn.close()
 
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
+@router.post("/register", response_class=HTMLResponse)
+def register(
+    request: Request,
+    student_id: str = Form(...),
+    username: str = Form(...),
+    firstname: str = Form(...),
+    lastname: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    phone: str = Form(...),
+    email: str = Form(...),
+    bt: str = Form(None),
+):
     """สมัครสมาชิก — รับ form data"""
-    student_id = request.form.get('student_id', '')
-    username = request.form.get('username', '')
-    firstname = request.form.get('firstname', '')
-    lastname = request.form.get('lastname', '')
-    password = request.form.get('password', '')
-    confirm_password = request.form.get('confirm_password', '')
-    phone = request.form.get('phone', '')
-    email = request.form.get('email', '')
-
     if password != confirm_password:
-        return "<script>alert('รหัสผ่านไม่ตรงกัน'); window.history.back();</script>"
+        return HTMLResponse("<script>alert('รหัสผ่านไม่ตรงกัน'); window.history.back();</script>")
 
     conn = get_db_connection()
     if not conn:
-        return "<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>"
+        return HTMLResponse("<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>")
 
     cursor = conn.cursor()
     try:
@@ -68,30 +68,30 @@ def register():
                  VALUES (%s, %s, %s, %s, %s, %s, %s)"""
         cursor.execute(sql, (student_id, username, firstname, lastname, password, phone, email))
         conn.commit()
-        return "<script>alert('สมัครสมาชิกสำเร็จ'); window.location.href='/frontend/auth/login.html';</script>"
+        return HTMLResponse("<script>alert('สมัครสมาชิกสำเร็จ'); window.location.href='/frontend/auth/login.html';</script>")
     except Exception:
         conn.rollback()
-        return "<script>alert('สมัครสมาชิกไม่สำเร็จ'); window.history.back();</script>"
+        return HTMLResponse("<script>alert('สมัครสมาชิกไม่สำเร็จ'); window.history.back();</script>")
     finally:
         cursor.close()
         conn.close()
 
 
-@auth_bp.route('/check', methods=['GET'])
-def check_auth():
+@router.get("/check")
+def check_auth(request: Request):
     """ตรวจสอบสถานะ login"""
-    if 'student_id' in session:
-        return jsonify({
+    if 'student_id' in request.session:
+        return {
             'status': 'success',
-            'role': session.get('role', 'user'),
-            'username': session.get('username', '')
-        })
+            'role': request.session.get('role', 'user'),
+            'username': request.session.get('username', '')
+        }
     else:
-        return jsonify({'status': 'error', 'message': 'Not logged in'})
+        return {'status': 'error', 'message': 'Not logged in'}
 
 
-@auth_bp.route('/logout', methods=['GET'])
-def logout():
+@router.get("/logout")
+def logout(request: Request):
     """ออกจากระบบ"""
-    session.clear()
-    return redirect('/frontend/auth/login.html')
+    request.session.clear()
+    return RedirectResponse(url="/frontend/auth/login.html")

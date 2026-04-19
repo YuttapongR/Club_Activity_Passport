@@ -2,29 +2,30 @@ import hashlib
 import time
 import random
 
-from flask import Blueprint, request, session, jsonify
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from backend.core.database import get_db_connection
 
-activities_bp = Blueprint('activities', __name__)
+router = APIRouter()
 
 
-@activities_bp.route('/checkin', methods=['POST'])
-def checkin():
+@router.post("/checkin")
+async def checkin(request: Request):
     """บันทึกเวลาเข้าร่วมกิจกรรม"""
-    if 'student_id' not in session:
-        return jsonify({'status': 'error', 'message': 'กรุณาเข้าสู่ระบบ'})
+    if 'student_id' not in request.session:
+        return {'status': 'error', 'message': 'กรุณาเข้าสู่ระบบ'}
 
-    data = request.get_json()
-    student_id = session['student_id']
+    data = await request.json()
+    student_id = request.session['student_id']
 
     if not data or 'code' not in data:
-        return jsonify({'status': 'error', 'message': 'กรุณาระบุรหัสกิจกรรม'})
+        return {'status': 'error', 'message': 'กรุณาระบุรหัสกิจกรรม'}
 
     code = data['code']
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -33,7 +34,7 @@ def checkin():
         activity = cursor.fetchone()
 
         if not activity:
-            return jsonify({'status': 'error', 'message': 'รหัสกิจกรรมไม่ถูกต้อง'})
+            return {'status': 'error', 'message': 'รหัสกิจกรรมไม่ถูกต้อง'}
 
         activity_id = activity['Activity_ID']
         hours = activity['Hours_Given']
@@ -44,7 +45,7 @@ def checkin():
             (activity_id, student_id)
         )
         if cursor.fetchone():
-            return jsonify({'status': 'error', 'message': 'คุณได้บันทึกเวลาเข้าร่วมกิจกรรมนี้ไปแล้ว'})
+            return {'status': 'error', 'message': 'คุณได้บันทึกเวลาเข้าร่วมกิจกรรมนี้ไปแล้ว'}
 
         # 3. Transaction — record check-in + update hours
         conn.start_transaction()
@@ -57,27 +58,27 @@ def checkin():
             (hours, student_id)
         )
         conn.commit()
-        return jsonify({
+        return {
             'status': 'success',
             'message': f'บันทึกเวลาสำเร็จ! คุณได้รับ {hours} ชั่วโมง'
-        })
+        }
     except Exception:
         conn.rollback()
-        return jsonify({'status': 'error', 'message': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล'})
+        return {'status': 'error', 'message': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล'}
     finally:
         cursor.close()
         conn.close()
 
 
-@activities_bp.route('/create', methods=['POST'])
-def create_activity():
+@router.post("/create")
+async def create_activity(request: Request):
     """สร้างกิจกรรมใหม่ (Admin เท่านั้น)"""
-    if session.get('role') != 'admin':
-        return jsonify({'status': 'error', 'message': 'Unauthorized'})
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
 
-    data = request.get_json()
+    data = await request.json()
     if not data or not all(k in data for k in ('activity_name', 'activity_date', 'hours')):
-        return jsonify({'status': 'error', 'message': 'ข้อมูลไม่ครบถ้วน'})
+        return {'status': 'error', 'message': 'ข้อมูลไม่ครบถ้วน'}
 
     club_id = data.get('club_id', 0) or 0
     name = data['activity_name']
@@ -91,7 +92,7 @@ def create_activity():
 
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor()
     try:
@@ -99,29 +100,29 @@ def create_activity():
                  VALUES (%s, %s, %s, %s, %s, %s)"""
         cursor.execute(sql, (club_id, name, desc, date, hours, checkin_code))
         conn.commit()
-        return jsonify({'status': 'success', 'message': 'เพิ่มกิจกรรมสำเร็จ', 'code': checkin_code})
+        return {'status': 'success', 'message': 'เพิ่มกิจกรรมสำเร็จ', 'code': checkin_code}
     except Exception as e:
         conn.rollback()
-        return jsonify({'status': 'error', 'message': str(e)})
+        return {'status': 'error', 'message': str(e)}
     finally:
         cursor.close()
         conn.close()
 
 
-@activities_bp.route('/delete', methods=['POST'])
-def delete_activity():
+@router.post("/delete")
+async def delete_activity(request: Request):
     """ลบกิจกรรม (Admin เท่านั้น)"""
-    if session.get('role') != 'admin':
-        return jsonify({'status': 'error', 'message': 'Unauthorized'})
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
 
-    data = request.get_json()
+    data = await request.json()
     if not data or 'activity_id' not in data:
-        return jsonify({'status': 'error', 'message': 'Missing activity_id'})
+        return {'status': 'error', 'message': 'Missing activity_id'}
 
     activity_id = data['activity_id']
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor()
     try:
@@ -129,22 +130,21 @@ def delete_activity():
         cursor.execute("DELETE FROM activity_checkins WHERE Activity_ID = %s", (activity_id,))
         cursor.execute("DELETE FROM activities WHERE Activity_ID = %s", (activity_id,))
         conn.commit()
-        return jsonify({'status': 'success', 'message': 'ลบกิจกรรมเรียบร้อยแล้ว'})
+        return {'status': 'success', 'message': 'ลบกิจกรรมเรียบร้อยแล้ว'}
     except Exception as e:
         conn.rollback()
-        return jsonify({'status': 'error', 'message': str(e)})
+        return {'status': 'error', 'message': str(e)}
     finally:
         cursor.close()
         conn.close()
 
 
-@activities_bp.route('/list', methods=['GET'])
-def get_activities():
+@router.get("/list")
+def get_activities(club_id: str = None):
     """ดึงรายการกิจกรรมทั้งหมด (filter by club_id ได้)"""
-    club_id = request.args.get('club_id')
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -166,24 +166,24 @@ def get_activities():
                 elif hasattr(val, '__float__'):
                     act[key] = float(val)
 
-        return jsonify({'status': 'success', 'data': activities})
+        return {'status': 'success', 'data': activities}
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
+        return {'status': 'error', 'message': str(e)}
     finally:
         cursor.close()
         conn.close()
 
 
-@activities_bp.route('/summary', methods=['GET'])
-def get_user_summary():
+@router.get("/summary")
+def get_user_summary(request: Request):
     """ดึงข้อมูลสรุปชั่วโมงกิจกรรมของผู้ใช้"""
-    if 'student_id' not in session:
-        return jsonify({'status': 'error', 'message': 'Not logged in'})
+    if 'student_id' not in request.session:
+        return {'status': 'error', 'message': 'Not logged in'}
 
-    student_id = session['student_id']
+    student_id = request.session['student_id']
     conn = get_db_connection()
     if not conn:
-        return jsonify({'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'})
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -210,11 +210,11 @@ def get_user_summary():
                 elif hasattr(val, '__float__'):
                     item[key] = float(val)
 
-        return jsonify({
+        return {
             'status': 'success',
             'total_hours': total_hours,
             'history': history
-        })
+        }
     finally:
         cursor.close()
         conn.close()
