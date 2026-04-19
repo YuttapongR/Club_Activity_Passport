@@ -300,17 +300,10 @@
                                     </td>
                                     <td class="px-6 py-4 text-center border-b border-slate-100">
                                         <div class="action-buttons space-x-2">
-                                            <a href="edit_club.html?id=${item.Club_ID}" 
-                                               class="btn-action btn-edit inline-block px-3 py-1.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-500 hover:text-white transition"
-                                               onclick="return confirm('ยืนยันที่จะแก้ไขข้อมูลชมรม ${item.Name_Club}?');">
-                                               <i class="fas fa-edit"></i> แก้ไข
-                                            </a>
-
-                                            <a href="/api/clubs/delete?id=${item.Club_ID}" 
-                                               class="btn-action btn-delete inline-block px-3 py-1.5 bg-red-100 text-red-600 rounded hover:bg-red-500 hover:text-white transition"
-                                               onclick="return confirm('⚠️ ยืนยันการลบข้อมูลชมรมนี้?');">
+                                            <button onclick="handleDeleteClub(${item.Club_ID}, '${item.Name_Club.replace(/'/g, "\\'")}')"
+                                               class="btn-action btn-delete inline-block px-3 py-1.5 bg-red-100 text-red-600 rounded hover:bg-red-500 hover:text-white transition">
                                                <i class="fas fa-trash-alt"></i> ลบ
-                                            </a>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -323,6 +316,29 @@
                 .catch(err => {
                     console.error('Error fetching clubs:', err);
                     list.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
+                });
+        }
+
+        function handleDeleteClub(clubId, clubName) {
+            if (!confirm(`⚠️ ยืนยันการลบชมรม "${clubName}"?`)) return;
+
+            fetch('/api/clubs/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: clubId })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        loadClubs();
+                    } else {
+                        alert('เกิดข้อผิดพลาด: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('Delete Club Error:', err);
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
                 });
         }
 

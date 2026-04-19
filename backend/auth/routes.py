@@ -1,4 +1,4 @@
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, redirect
 
 from backend.core.database import get_db_connection
 

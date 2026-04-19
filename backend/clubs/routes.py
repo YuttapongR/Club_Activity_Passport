@@ -69,12 +69,16 @@ def create_club():
         conn.close()
 
 
-@clubs_bp.route('/delete', methods=['GET'])
+@clubs_bp.route('/delete', methods=['POST'])
 def delete_club():
-    """ลบชมรม — รับ id จาก query string"""
-    club_id = request.args.get('id')
+    """ลบชมรม — รับ id จาก JSON body (Admin เท่านั้น)"""
+    if session.get('role') != 'admin':
+        return jsonify({'status': 'error', 'message': 'Unauthorized access'})
+
+    data = request.get_json()
+    club_id = data.get('id') if data else None
     if not club_id:
-        return "Invalid request"
+        return jsonify({'status': 'error', 'message': 'Missing club id'})
 
     conn = get_db_connection()
     if not conn:
@@ -92,10 +96,10 @@ def delete_club():
 
         cursor.execute("DELETE FROM club WHERE Club_ID = %s", (club_id,))
         conn.commit()
-        return "<script>alert('ลบชมรมสำเร็จ'); window.location.href='/frontend/admin/Admin.html';</script>"
+        return jsonify({'status': 'success', 'message': 'ลบชมรมสำเร็จ'})
     except Exception:
         conn.rollback()
-        return "<script>alert('ลบชมรมไม่สำเร็จ'); window.location.href='/frontend/admin/Admin.html';</script>"
+        return jsonify({'status': 'error', 'message': 'ลบชมรมไม่สำเร็จ'})
     finally:
         cursor.close()
         conn.close()
@@ -112,6 +116,15 @@ def get_clubs():
     try:
         cursor.execute("SELECT * FROM club ORDER BY Club_ID DESC")
         clubs = cursor.fetchall()
+
+        # Convert datetime/Decimal for JSON serialization
+        for club in clubs:
+            for key, val in club.items():
+                if hasattr(val, 'isoformat'):
+                    club[key] = val.isoformat()
+                elif hasattr(val, '__float__'):
+                    club[key] = float(val)
+
         return jsonify({'status': 'success', 'data': clubs})
     finally:
         cursor.close()
