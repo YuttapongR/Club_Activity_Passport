@@ -59,27 +59,39 @@ def setup_cert_tables():
 
     cursor = conn.cursor()
     try:
-        # 1. สร้างตาราง membership
+        # 1. ปรับปรุงตาราง user ให้มี UNIQUE Student_ID
+        print("Ensuring user table is compatible...")
+        cursor.execute("ALTER TABLE user MODIFY Student_ID VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL")
+        try:
+            cursor.execute("ALTER TABLE user ADD UNIQUE (Student_ID)")
+        except:
+            pass
+
+        # 2. สร้างตาราง membership พร้อม Foreign Key และ ON DELETE CASCADE
         sql1 = """CREATE TABLE IF NOT EXISTS membership (
             Member_ID INT AUTO_INCREMENT PRIMARY KEY,
-            Student_ID VARCHAR(20) NOT NULL,
+            Student_ID VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
             Club_ID INT NOT NULL,
             Join_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY (Student_ID, Club_ID)
-        )"""
+            UNIQUE KEY (Student_ID, Club_ID),
+            CONSTRAINT fk_mem_student FOREIGN KEY (Student_ID) REFERENCES user(Student_ID) ON DELETE CASCADE,
+            CONSTRAINT fk_mem_club FOREIGN KEY (Club_ID) REFERENCES club(Club_ID) ON DELETE CASCADE
+        ) ENGINE=InnoDB"""
         cursor.execute(sql1)
-        print("Table 'membership' created or already exists.")
+        print("Table 'membership' setup complete with Cascade Delete.")
 
-        # 2. สร้างตาราง certificates
+        # 3. สร้างตาราง certificates พร้อม Cascade Delete
         sql2 = """CREATE TABLE IF NOT EXISTS certificates (
             Cert_ID INT AUTO_INCREMENT PRIMARY KEY,
-            Student_ID VARCHAR(20) NOT NULL,
+            Student_ID VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
             Club_ID INT NOT NULL,
             Issue_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            Cert_Code VARCHAR(50) UNIQUE NOT NULL
-        )"""
+            Cert_Code VARCHAR(50) UNIQUE NOT NULL,
+            CONSTRAINT fk_cert_student FOREIGN KEY (Student_ID) REFERENCES user(Student_ID) ON DELETE CASCADE,
+            CONSTRAINT fk_cert_club FOREIGN KEY (Club_ID) REFERENCES club(Club_ID) ON DELETE CASCADE
+        ) ENGINE=InnoDB"""
         cursor.execute(sql2)
-        print("Table 'certificates' created or already exists.")
+        print("Table 'certificates' setup complete with Cascade Delete.")
 
         conn.commit()
     except Exception as e:

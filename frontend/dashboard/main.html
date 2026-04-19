@@ -68,6 +68,21 @@
     <!-- 2. Main Content -->
     <main class="container mx-auto px-6 py-10 flex-grow">
 
+        <!-- Today's Activity Notification Banner -->
+        <div id="today-banner" class="hidden mb-6">
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+                        <i class="fas fa-bell text-lg"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="font-bold text-amber-800 mb-1">📢 กิจกรรมวันนี้</h3>
+                        <div id="today-activities-list" class="space-y-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- User Stats Section -->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div
@@ -83,10 +98,10 @@
                     </p>
                 </div>
                 <div class="mt-8 md:mt-0 relative z-10 w-full md:w-auto">
-                    <button onclick="handleCheckinPrompt()"
-                        class="w-full md:w-auto bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold shadow-lg hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-3">
-                        <i class="fas fa-qrcode text-xl"></i> บันทึกเวลาเข้าร่วม
-                    </button>
+                    <div class="bg-white/15 backdrop-blur-md text-white px-8 py-4 rounded-2xl text-center">
+                        <i class="fas fa-info-circle text-xl mb-1 block"></i>
+                        <span class="text-sm opacity-90">ชั่วโมงจะถูกบันทึกโดย Admin<br>เมื่อคุณเข้าร่วมกิจกรรม</span>
+                    </div>
                 </div>
                 <!-- Abstract Background Shapes -->
                 <div
@@ -297,27 +312,27 @@
                 });
         }
 
-        async function handleCheckinPrompt() {
-            const code = prompt('กรุณากรอกรหัสเช็คอิน (6 หลัก):');
-            if (code && code.trim().length > 0) {
-                try {
-                    const response = await fetch('/api/activities/checkin', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ code: code.toUpperCase().trim() })
-                    });
-                    const data = await response.json();
-
-                    if (data.status === 'success') {
-                        alert('🎉 ' + data.message);
-                        loadUserSummary(); // Refresh stats
-                    } else {
-                        alert('❌ ' + data.message);
+        function loadTodayActivities() {
+            fetch('/api/activities/today')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success' && data.data.length > 0) {
+                        const banner = document.getElementById('today-banner');
+                        const list = document.getElementById('today-activities-list');
+                        list.innerHTML = '';
+                        data.data.forEach(act => {
+                            const time = new Date(act.Activity_Date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                            list.innerHTML += `
+                                <div class="flex items-center gap-2 text-sm text-amber-700">
+                                    <i class="fas fa-circle text-[6px] text-amber-400"></i>
+                                    <span class="font-medium">${act.Activity_Name}</span>
+                                    <span class="text-amber-500">— ${act.Name_Club || 'ไม่ระบุชมรม'}</span>
+                                    <span class="text-amber-400 text-xs">(${time}, ${act.Hours_Given} ชม.)</span>
+                                </div>`;
+                        });
+                        banner.classList.remove('hidden');
                     }
-                } catch (err) {
-                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-                }
-            }
+                });
         }
 
         // -- Event Listeners --
@@ -331,7 +346,7 @@
                 const query = e.target.value;
                 searchTimeout = setTimeout(() => {
                     loadClubData(query);
-                }, 300); // ดีเลย์ 300ms เพื่อประหยัดทรัพยากร server
+                }, 300);
             });
 
             fetch('/api/auth/check')
@@ -341,6 +356,7 @@
                         if (data.role === 'admin') document.getElementById('admin-btn')?.classList.remove('hidden');
                         loadClubData();
                         loadUserSummary();
+                        loadTodayActivities();
                     } else {
                         window.location.href = '../auth/login.html';
                     }

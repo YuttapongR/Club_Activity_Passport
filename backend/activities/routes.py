@@ -2,73 +2,263 @@ import hashlib
 import time
 import random
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from backend.core.database import get_db_connection
+from backend.core.email_service import send_checkin_notification, send_activity_notification
 
 router = APIRouter()
 
 
-@router.post("/checkin")
-async def checkin(request: Request):
-    """บันทึกเวลาเข้าร่วมกิจกรรม"""
-    if 'student_id' not in request.session:
-        return {'status': 'error', 'message': 'กรุณาเข้าสู่ระบบ'}
+# =============================================================================
+# Admin: บันทึกเวลาให้สมาชิก (แทนระบบรหัสเดิม)
+# =============================================================================
 
-    data = await request.json()
-    student_id = request.session['student_id']
+@router.post("/admin_checkin")
+async def admin_checkin(request: Request, background_tasks: BackgroundTasks):
+    """Admin เลือกสมาชิกที่มาเข้าร่วม แล้วบันทึกชั่วโมงให้"""
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
 
-    if not data or 'code' not in data:
-        return {'status': 'error', 'message': 'กรุณาระบุรหัสกิจกรรม'}
+    try:
+        data = await request.json()
+        activity_id = data.get('activity_id')
+        student_ids = data.get('student_ids')
 
-    code = data['code']
+        if not activity_id or not student_ids:
+            return {'status': 'error', 'message': 'ข้อมูลไม่ครบถ้วน'}
+
+        if not isinstance(student_ids, list) or len(student_ids) == 0:
+            return {'status': 'error', 'message': 'กรุณาเลือกสมาชิกอย่างน้อย 1 คน'}
+
+        conn = get_db_connection()
+        if not conn:
+            return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
+
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # ปิด autocommit เพื่อเริ่ม Transaction แบบ Manual
+            # วิธีนี้จะชัวร์กว่า start_transaction() ในบางเวอร์ชัน
+            conn.autocommit = False
+
+            # 1. ดึงข้อมูลกิจกรรม
+            cursor.execute("SELECT Hours_Given, Activity_Name FROM activities WHERE Activity_ID = %s", (activity_id,))
+            activity = cursor.fetchone()
+            if not activity:
+                return {'status': 'error', 'message': 'ไม่พบกิจกรรมนี้'}
+
+            hours = activity['Hours_Given']
+            activity_name = activity['Activity_Name']
+
+            # 2. บันทึกเวลาให้แต่ละคน
+            success_count = 0
+            already_count = 0
+            email_recipients = []
+
+            for sid in student_ids:
+                # เช็คว่าบันทึกไปแล้วหรือยัง
+                cursor.execute(
+                    "SELECT Checkin_ID FROM activity_checkins WHERE Activity_ID = %s AND Student_ID = %s",
+                    (activity_id, sid)
+                )
+                if cursor.fetchone():
+                    already_count += 1
+                    continue
+
+                # บันทึก checkin
+                cursor.execute(
+                    "INSERT INTO activity_checkins (Activity_ID, Student_ID) VALUES (%s, %s)",
+                    (activity_id, sid)
+                )
+                
+                # อัพเดทชั่วโมง
+                cursor.execute(
+                    "UPDATE user SET Total_Hours = IFNULL(Total_Hours, 0) + %s WHERE Student_ID = %s",
+                    (hours, sid)
+                )
+                success_count += 1
+
+                # ดึงข้อมูล email สำหรับแจ้งเตือน
+                cursor.execute("SELECT Email, First_Name, Last_Name FROM user WHERE Student_ID = %s", (sid,))
+                user = cursor.fetchone()
+                if user and user.get('Email'):
+                    email_recipients.append({
+                        'email': user['Email'],
+                        'name': f"{user.get('First_Name', '')} {user.get('Last_Name', '')}"
+                    })
+
+            # ยืนยันข้อมูลทั้งหมด
+            conn.commit()
+
+            # 3. ส่ง email ใน background
+            if email_recipients:
+                background_tasks.add_task(send_checkin_notification, email_recipients, activity_name, float(hours))
+
+            return {
+                'status': 'success',
+                'message': f'บันทึกเวลาสำเร็จ {success_count} คน' + (f' (มีอยู่แล้ว {already_count} คน)' if already_count else ''),
+                'email_queued': len(email_recipients)
+            }
+        except Exception as inner_e:
+            try: conn.rollback()
+            except: pass
+            print(f"DB Error: {inner_e}")
+            return {'status': 'error', 'message': f'ฐานข้อมูลผิดพลาด: {inner_e}'}
+        finally:
+            cursor.close()
+            conn.close()
+
+    except Exception as e:
+        print(f"Server Error: {e}")
+        return {'status': 'error', 'message': f'เกิดข้อผิดพลาดของระบบ: {e}'}
+
+
+# =============================================================================
+# Admin: ดึงรายชื่อสมาชิก + สถานะเช็คอิน
+# =============================================================================
+
+@router.get("/attendees")
+def get_attendees(request: Request, activity_id: str = None):
+    """ดึงรายชื่อสมาชิกชมรมที่ผูกกับกิจกรรม พร้อมสถานะว่าเช็คอินหรือยัง"""
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
+
+    if not activity_id:
+        return {'status': 'error', 'message': 'Missing activity_id'}
+
     conn = get_db_connection()
     if not conn:
-        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
+        return {'status': 'error', 'message': 'DB connection failed'}
 
     cursor = conn.cursor(dictionary=True)
     try:
-        # 1. Find activity by code
-        cursor.execute("SELECT * FROM activities WHERE Checkin_Code = %s", (code,))
-        activity = cursor.fetchone()
+        # ดึง Club_ID ของกิจกรรมนี้
+        cursor.execute("SELECT Club_ID FROM activities WHERE Activity_ID = %s", (activity_id,))
+        act = cursor.fetchone()
+        if not act:
+            return {'status': 'error', 'message': 'ไม่พบกิจกรรมนี้'}
 
-        if not activity:
-            return {'status': 'error', 'message': 'รหัสกิจกรรมไม่ถูกต้อง'}
+        club_id = act['Club_ID']
 
-        activity_id = activity['Activity_ID']
-        hours = activity['Hours_Given']
+        # ดึงสมาชิกชมรม + สถานะ checkin
+        sql = """
+            SELECT u.Student_ID, u.Username, u.First_Name, u.Last_Name, u.Email,
+                   CASE WHEN ac.Checkin_ID IS NOT NULL THEN 1 ELSE 0 END AS checked_in
+            FROM membership m
+            JOIN user u ON m.Student_ID = u.Student_ID
+            LEFT JOIN activity_checkins ac ON ac.Student_ID = u.Student_ID AND ac.Activity_ID = %s
+            WHERE m.Club_ID = %s
+            ORDER BY u.Student_ID
+        """
+        cursor.execute(sql, (activity_id, club_id))
+        members = cursor.fetchall()
 
-        # 2. Check if already checked in
-        cursor.execute(
-            "SELECT * FROM activity_checkins WHERE Activity_ID = %s AND Student_ID = %s",
-            (activity_id, student_id)
-        )
-        if cursor.fetchone():
-            return {'status': 'error', 'message': 'คุณได้บันทึกเวลาเข้าร่วมกิจกรรมนี้ไปแล้ว'}
-
-        # 3. Transaction — record check-in + update hours
-        conn.start_transaction()
-        cursor.execute(
-            "INSERT INTO activity_checkins (Activity_ID, Student_ID) VALUES (%s, %s)",
-            (activity_id, student_id)
-        )
-        cursor.execute(
-            "UPDATE user SET Total_Hours = IFNULL(Total_Hours, 0) + %s WHERE Student_ID = %s",
-            (hours, student_id)
-        )
-        conn.commit()
-        return {
-            'status': 'success',
-            'message': f'บันทึกเวลาสำเร็จ! คุณได้รับ {hours} ชั่วโมง'
-        }
-    except Exception:
-        conn.rollback()
-        return {'status': 'error', 'message': 'เกิดข้อผิดพลาดในการบันทึกข้อมูล'}
+        return {'status': 'success', 'data': members, 'count': len(members)}
     finally:
         cursor.close()
         conn.close()
 
+
+# =============================================================================
+# Admin: ส่ง email แจ้งเตือนกิจกรรม
+# =============================================================================
+
+@router.post("/notify")
+async def notify_activity(request: Request, background_tasks: BackgroundTasks):
+    """ส่ง email แจ้งเตือนกิจกรรมให้สมาชิกชมรม"""
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
+
+    data = await request.json()
+    if not data or 'activity_id' not in data:
+        return {'status': 'error', 'message': 'Missing activity_id'}
+
+    activity_id = data['activity_id']
+
+    conn = get_db_connection()
+    if not conn:
+        return {'status': 'error', 'message': 'DB connection failed'}
+
+    cursor = conn.cursor(dictionary=True)
+    try:
+        sql = """SELECT a.*, c.Name_Club FROM activities a
+                 LEFT JOIN club c ON a.Club_ID = c.Club_ID
+                 WHERE a.Activity_ID = %s"""
+        cursor.execute(sql, (activity_id,))
+        act = cursor.fetchone()
+        if not act:
+            return {'status': 'error', 'message': 'ไม่พบกิจกรรมนี้'}
+
+        cursor.execute("""
+            SELECT u.Email, u.First_Name, u.Last_Name
+            FROM membership m JOIN user u ON m.Student_ID = u.Student_ID
+            WHERE m.Club_ID = %s AND u.Email IS NOT NULL AND u.Email != ''
+        """, (act['Club_ID'],))
+        members = cursor.fetchall()
+
+        recipients = [{'email': m['Email'], 'name': f"{m['First_Name']} {m['Last_Name']}"} for m in members]
+
+        activity_date = act['Activity_Date']
+        if hasattr(activity_date, 'strftime'):
+            activity_date = activity_date.strftime('%d/%m/%Y %H:%M')
+
+        if recipients:
+            background_tasks.add_task(
+                send_activity_notification,
+                recipients,
+                act['Activity_Name'],
+                act.get('Name_Club', 'ไม่ระบุชมรม'),
+                str(activity_date)
+            )
+
+        return {
+            'status': 'success',
+            'message': f"กำลังส่งอีเมลแจ้งเตือนจำนวน {len(recipients)} ฉบับในเบื้องหลัง"
+        }
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# =============================================================================
+# User: กิจกรรมวันนี้
+# =============================================================================
+
+@router.get("/today")
+def get_today_activities(request: Request):
+    """ดึงกิจกรรมที่มีวันนี้ สำหรับแจ้งเตือนบน Dashboard"""
+    conn = get_db_connection()
+    if not conn:
+        return {'status': 'error', 'message': 'DB connection failed'}
+
+    cursor = conn.cursor(dictionary=True)
+    try:
+        sql = """SELECT a.Activity_ID, a.Activity_Name, a.Activity_Date, a.Hours_Given,
+                        c.Name_Club, c.Club_ID
+                 FROM activities a
+                 LEFT JOIN club c ON a.Club_ID = c.Club_ID
+                 WHERE DATE(a.Activity_Date) = CURDATE()
+                 ORDER BY a.Activity_Date ASC"""
+        cursor.execute(sql)
+        activities = cursor.fetchall()
+
+        for act in activities:
+            for key, val in act.items():
+                if hasattr(val, 'isoformat'):
+                    act[key] = val.isoformat()
+                elif hasattr(val, '__float__'):
+                    act[key] = float(val)
+
+        return {'status': 'success', 'data': activities, 'count': len(activities)}
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# =============================================================================
+# Admin: CRUD กิจกรรม
+# =============================================================================
 
 @router.post("/create")
 async def create_activity(request: Request):
@@ -86,7 +276,7 @@ async def create_activity(request: Request):
     date = data['activity_date']
     hours = data['hours']
 
-    # Generate unique 6-digit checkin code
+    # Generate unique 6-digit checkin code (เก็บไว้เป็น reference)
     raw = f"{time.time()}{random.randint(0, 999999)}"
     checkin_code = hashlib.md5(raw.encode()).hexdigest()[:6].upper()
 
@@ -126,7 +316,6 @@ async def delete_activity(request: Request):
 
     cursor = conn.cursor()
     try:
-        # Delete checkins first due to FK constraints
         cursor.execute("DELETE FROM activity_checkins WHERE Activity_ID = %s", (activity_id,))
         cursor.execute("DELETE FROM activities WHERE Activity_ID = %s", (activity_id,))
         conn.commit()
@@ -141,7 +330,7 @@ async def delete_activity(request: Request):
 
 @router.get("/list")
 def get_activities(club_id: str = None):
-    """ดึงรายการกิจกรรมทั้งหมด (filter by club_id ได้)"""
+    """ดึงรายการกิจกรรมทั้งหมด"""
     conn = get_db_connection()
     if not conn:
         return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
@@ -158,7 +347,6 @@ def get_activities(club_id: str = None):
 
         activities = cursor.fetchall()
 
-        # Convert Decimal/datetime to JSON-serializable types
         for act in activities:
             for key, val in act.items():
                 if hasattr(val, 'isoformat'):
@@ -187,12 +375,10 @@ def get_user_summary(request: Request):
 
     cursor = conn.cursor(dictionary=True)
     try:
-        # 1. Get user total hours
         cursor.execute("SELECT Total_Hours FROM user WHERE Student_ID = %s", (student_id,))
         user_data = cursor.fetchone()
         total_hours = float(user_data['Total_Hours']) if user_data and user_data['Total_Hours'] else 0
 
-        # 2. Get activities user checked into
         sql = """SELECT a.Activity_Name, a.Hours_Given, c.Checkin_Time, cl.Name_Club
                  FROM activity_checkins c
                  JOIN activities a ON c.Activity_ID = a.Activity_ID
@@ -202,7 +388,6 @@ def get_user_summary(request: Request):
         cursor.execute(sql, (student_id,))
         history = cursor.fetchall()
 
-        # Convert types for JSON serialization
         for item in history:
             for key, val in item.items():
                 if hasattr(val, 'isoformat'):

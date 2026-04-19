@@ -11,6 +11,11 @@ services:
       - DB_PASSWORD=123456
       - DB_NAME=club_system
       - SECRET_KEY=club_system_secret_key_2026
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=
+      - SMTP_PASSWORD=
+      - SMTP_SENDER_NAME=ClubHub System
     depends_on:
       - db
     networks:

@@ -181,7 +181,7 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
             <div>
                 <h2 class="text-3xl font-bold text-slate-800">จัดการกิจกรรม</h2>
-                <p class="text-slate-500">สร้างและบันทึกเวลาเข้าร่วมกิจกรรมเพื่อสะสมชั่วโมง</p>
+                <p class="text-slate-500">สร้างกิจกรรม, บันทึกเวลาสมาชิก และส่งแจ้งเตือน</p>
             </div>
         </div>
 
@@ -191,6 +191,14 @@
                     <i class="fas fa-plus-circle"></i> สร้างกิจกรรมใหม่
                 </h3>
                 <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">เลือกชมรม <span
+                                class="text-red-500">*</span></label>
+                        <select id="act-club"
+                            class="w-full border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">-- เลือกชมรม --</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">ชื่อกิจกรรม</label>
                         <input type="text" id="act-name" placeholder="เช่น ปฐมนิเทศชมรม"
@@ -215,7 +223,7 @@
                     </div>
                     <button onclick="handleCreateActivity()"
                         class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100">
-                        <i class="fas fa-save mr-1"></i> บันทึกและสร้างรหัส
+                        <i class="fas fa-save mr-1"></i> สร้างกิจกรรม
                     </button>
                 </div>
             </div>
@@ -230,15 +238,50 @@
                         <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-bold">
                             <tr>
                                 <th class="px-6 py-4">กิจกรรม</th>
-                                <th class="px-6 py-4">วันที่ / เวลา</th>
-                                <th class="px-6 py-4">ชั่วโมง</th>
-                                <th class="px-6 py-4 text-center">รหัสเช็คอิน</th>
+                                <th class="px-6 py-4">วันที่</th>
+                                <th class="px-6 py-4">ชม.</th>
                                 <th class="px-6 py-4 text-center">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="activity-list" class="divide-y divide-slate-100">
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Modal -->
+        <div id="attendance-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center"
+            style="display:none;">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+                <div class="p-6 border-b bg-slate-50 rounded-t-3xl flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800"><i
+                                class="fas fa-user-check mr-2 text-emerald-600"></i>บันทึกเวลาสมาชิก</h3>
+                        <p id="modal-activity-name" class="text-sm text-slate-500 mt-1"></p>
+                    </div>
+                    <button onclick="closeAttendanceModal()" class="text-slate-400 hover:text-slate-700 text-xl p-2"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-grow">
+                    <div class="flex justify-between items-center mb-4">
+                        <label class="flex items-center gap-2 text-sm text-slate-600">
+                            <input type="checkbox" id="select-all-attend" onchange="toggleSelectAllAttend(this)"
+                                class="w-4 h-4 rounded">
+                            เลือกทั้งหมด
+                        </label>
+                        <span id="attend-count"
+                            class="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">0 คน</span>
+                    </div>
+                    <div id="attendance-list" class="space-y-2"></div>
+                </div>
+                <div class="p-6 border-t bg-slate-50 rounded-b-3xl flex justify-end gap-3">
+                    <button onclick="closeAttendanceModal()"
+                        class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 transition">ยกเลิก</button>
+                    <button onclick="submitAttendance()"
+                        class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-100">
+                        <i class="fas fa-check mr-1"></i> บันทึกชั่วโมง
+                    </button>
                 </div>
             </div>
         </div>
@@ -513,11 +556,29 @@
                 });
         }
 
+        let currentAttendanceActivityId = null;
+        let currentActivityName = "";
+
         function loadActivities() {
             const list = document.getElementById('activity-list');
             if (!list) return;
 
-            list.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลด...</td></tr>';
+            // โหลด dropdown ชมรมสำหรับสร้างกิจกรรม
+            const clubSelect = document.getElementById('act-club');
+            if (clubSelect && clubSelect.options.length <= 1) {
+                fetch('/api/clubs/list').then(r => r.json()).then(d => {
+                    if (d.status === 'success') {
+                        d.data.forEach(c => {
+                            const opt = document.createElement('option');
+                            opt.value = c.Club_ID;
+                            opt.textContent = c.Name_Club;
+                            clubSelect.appendChild(opt);
+                        });
+                    }
+                });
+            }
+
+            list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลด...</td></tr>';
 
             fetch(`/api/activities/list`)
                 .then(res => res.json())
@@ -529,22 +590,29 @@
                                 dateStyle: 'medium',
                                 timeStyle: 'short'
                             });
+                            // Escape single quotes for activity name
+                            const safeName = act.Activity_Name.replace(/'/g, "\\'");
                             list.innerHTML += `
                                 <tr class="hover:bg-slate-50">
                                     <td class="px-6 py-4">
                                         <div class="font-bold text-slate-800">${act.Activity_Name}</div>
-                                        <div class="text-xs text-slate-400 truncate w-32">${act.Description || '-'}</div>
+                                        <div class="text-xs text-slate-400 truncate w-40">${act.Description || '-'}</div>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-slate-600">${date}</td>
                                     <td class="px-6 py-4">
                                         <span class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-bold">${act.Hours_Given}</span>
                                     </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <code class="bg-slate-100 px-3 py-1.5 rounded-lg font-mono text-blue-600 font-bold">${act.Checkin_Code}</code>
-                                    </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <button onclick="handleDeleteActivity(${act.Activity_ID})" 
-                                            class="text-red-400 hover:text-red-600 transition p-2">
+                                    <td class="px-6 py-4 text-center space-x-1">
+                                        <button onclick="openAttendanceModal(${act.Activity_ID}, '${safeName}', ${act.Hours_Given})"
+                                            class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition text-sm font-medium">
+                                            <i class="fas fa-user-check mr-1"></i>บันทึกเวลา
+                                        </button>
+                                        <button onclick="handleNotifyActivity(${act.Activity_ID})"
+                                            class="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-500 hover:text-white transition text-sm font-medium">
+                                            <i class="fas fa-envelope mr-1"></i>แจ้งเตือน
+                                        </button>
+                                        <button onclick="handleDeleteActivity(${act.Activity_ID})"
+                                            class="px-2 py-1.5 text-red-400 hover:text-red-600 transition">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </td>
@@ -552,45 +620,172 @@
                             `;
                         });
                     } else {
-                        list.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">ยังไม่มีข้อมูลกิจกรรมสำหรับชมรมนี้</td></tr>';
+                        list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">ยังไม่มีข้อมูลกิจกรรม</td></tr>';
                     }
+                })
+                .catch(err => {
+                    console.error('Load Activities Error:', err);
+                    list.innerHTML = '<tr><td colspan="4" class="px-6 py-12 text-center text-red-400">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+                });
+        }
+
+        function openAttendanceModal(activityId, activityName, hours) {
+            console.log('Opening Modal for:', activityId, activityName);
+            currentAttendanceActivityId = parseInt(activityId);
+            currentActivityName = activityName;
+
+            const modal = document.getElementById('attendance-modal');
+            if (!modal) return;
+
+            document.getElementById('modal-activity-name').textContent = `${activityName} (${hours} ชม.)`;
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+
+            const listDiv = document.getElementById('attendance-list');
+            listDiv.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังโหลดรายชื่อ...</div>';
+
+            document.getElementById('select-all-attend').checked = false;
+            updateAttendCount();
+
+            fetch(`/api/activities/attendees?activity_id=${activityId}`)
+                .then(r => r.json())
+                .then(data => {
+                    listDiv.innerHTML = '';
+                    if (data.status === 'success' && data.data.length > 0) {
+                        data.data.forEach(m => {
+                            const isChecked = m.checked_in;
+                            const checkedAttr = isChecked ? 'checked disabled' : '';
+                            const label = isChecked ? '<span class="text-xs text-emerald-600 font-medium ml-2">✅ บันทึกแล้ว</span>' : '';
+                            listDiv.innerHTML += `
+                                <div class="flex items-center justify-between p-3 rounded-xl border border-slate-100 ${isChecked ? 'bg-slate-50' : 'hover:bg-slate-50'} transition">
+                                    <label class="flex items-center gap-3 flex-grow ${isChecked ? 'cursor-default' : 'cursor-pointer'}">
+                                        <input type="checkbox" name="attend-cb" value="${m.Student_ID}" ${checkedAttr}
+                                            class="w-4 h-4 rounded text-emerald-600" onchange="updateAttendCount()">
+                                        <div>
+                                            <div class="font-medium text-slate-800">${m.First_Name} ${m.Last_Name}</div>
+                                            <div class="text-xs text-slate-400">${m.Student_ID} • ${m.Username}</div>
+                                        </div>
+                                    </label>
+                                    ${label}
+                                </div>`;
+                        });
+                        updateAttendCount();
+                    } else {
+                        listDiv.innerHTML = `<div class="text-center py-8 text-slate-400">${data.message || 'ยังไม่มีสมาชิกในชมรมนี้'}</div>`;
+                    }
+                })
+                .catch(err => {
+                    console.error('Fetch Attendees Error:', err);
+                    listDiv.innerHTML = '<div class="text-center py-8 text-red-400">เกิดข้อผิดพลาดในการโหลดรายชื่อ</div>';
+                });
+        }
+
+        function closeAttendanceModal() {
+            const modal = document.getElementById('attendance-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+            }
+            currentAttendanceActivityId = null;
+        }
+
+        function toggleSelectAllAttend(source) {
+            document.querySelectorAll('input[name="attend-cb"]:not(:disabled)').forEach(cb => cb.checked = source.checked);
+            updateAttendCount();
+        }
+
+        function updateAttendCount() {
+            const count = document.querySelectorAll('input[name="attend-cb"]:checked:not(:disabled)').length;
+            const el = document.getElementById('attend-count');
+            if (el) el.textContent = `${count} คนที่เลือก`;
+        }
+
+        function submitAttendance() {
+            const ids = Array.from(document.querySelectorAll('input[name="attend-cb"]:checked:not(:disabled)')).map(cb => cb.value);
+            if (ids.length === 0) {
+                alert('กรุณาเลือกสมาชิกอย่างน้อย 1 คน (ที่ยังไม่ได้บันทึกเวลา)');
+                return;
+            }
+
+            if (!confirm(`ยืนยันบันทึกชั่วโมงให้ ${ids.length} คน?`)) return;
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังบันทึก...';
+
+            fetch('/api/activities/admin_checkin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    activity_id: currentAttendanceActivityId,
+                    student_ids: ids
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+
+                    if (data.status === 'success') {
+                        alert(`✅ ${data.message}` + (data.email_queued ? `\n📧 ระบบกำลังส่งอีเมลแจ้งสมาชิกในพื้นหลัง...` : ''));
+                        // โหลดรายชื่อใหม่เพื่ออัปเดตสถานะติ๊กถูก
+                        const hoursText = document.getElementById('modal-activity-name').textContent.match(/\((.*?) ชม\.\)/)[1];
+                        openAttendanceModal(currentAttendanceActivityId, currentActivityName, hoursText);
+                    } else {
+                        alert('❌ เกิดข้อผิดพลาด: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    console.error('Submit Attendance Error:', err);
+                    alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+                });
+        }
+
+        function handleNotifyActivity(activityId) {
+            if (!confirm('ส่งอีเมลแจ้งเตือนกิจกรรมนี้ให้สมาชิกชมรมทุกคน?')) return;
+            fetch('/api/activities/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activity_id: activityId })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') { alert('📧 ' + data.message); }
+                    else { alert('❌ ' + data.message); }
                 });
         }
 
         function handleCreateActivity() {
+            const clubId = document.getElementById('act-club').value;
             const name = document.getElementById('act-name').value;
             const desc = document.getElementById('act-desc').value;
             const date = document.getElementById('act-date').value;
             const hours = document.getElementById('act-hours').value;
 
-            if (!name || !date || !hours) {
-                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            if (!clubId || !name || !date || !hours) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วน (รวมถึงเลือกชมรม)');
                 return;
             }
 
             fetch('/api/activities/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    club_id: null,
-                    activity_name: name,
-                    description: desc,
-                    activity_date: date,
-                    hours: hours
-                })
+                body: JSON.stringify({ club_id: clubId, activity_name: name, description: desc, activity_date: date, hours: hours })
             })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        alert(data.message + '\nรหัสเช็คอิน: ' + data.code);
+                        alert(data.message);
+                        document.getElementById('act-club').value = '';
                         document.getElementById('act-name').value = '';
                         document.getElementById('act-desc').value = '';
                         document.getElementById('act-date').value = '';
                         document.getElementById('act-hours').value = '';
                         loadActivities();
-                    } else {
-                        alert('เกิดข้อผิดพลาด: ' + data.message);
-                    }
+                    } else { alert('เกิดข้อผิดพลาด: ' + data.message); }
                 });
         }
 
@@ -604,12 +799,8 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'success') {
-                        alert(data.message);
-                        loadActivities();
-                    } else {
-                        alert('เกิดข้อผิดพลาด: ' + data.message);
-                    }
+                    if (data.status === 'success') { alert(data.message); loadActivities(); }
+                    else { alert('เกิดข้อผิดพลาด: ' + data.message); }
                 });
         }
 
