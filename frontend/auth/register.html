@@ -125,16 +125,19 @@
 
         <form action="/api/auth/register" method="POST" class="form-content">
             <h3>รหัสนักศึกษา</h3>
-            <input type="text" name="student_id" placeholder="รหัสนักศึกษาของคุณ" required />
+            <input type="text" name="student_id" placeholder="รหัสนักศึกษาของคุณ"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')" required />
 
             <h3>Username</h3>
             <input type="text" name="username" placeholder="ชื่อผู้ใช้งาน" required />
 
             <h3>ชื่อ</h3>
-            <input type="text" name="firstname" placeholder="ชื่อจริง" required />
+            <input type="text" name="firstname" placeholder="ชื่อจริง"
+                oninput="this.value = this.value.replace(/[0-9]/g, '')" required />
 
             <h3>นามสกุล</h3>
-            <input type="text" name="lastname" placeholder="นามสกุล" required />
+            <input type="text" name="lastname" placeholder="นามสกุล"
+                oninput="this.value = this.value.replace(/[0-9]/g, '')" required />
 
             <h3>รหัสผ่าน</h3>
             <input type="password" name="password" placeholder="ตั้งรหัสผ่านของคุณ" required />
@@ -143,7 +146,8 @@
             <input type="password" name="confirm_password" placeholder="กรอกรหัสผ่านอีกครั้ง" required />
 
             <h3>เบอร์โทรศัพท์</h3>
-            <input type="tel" name="phone" placeholder="08x-xxx-xxxx" required />
+            <input type="tel" name="phone" placeholder="08x-xxx-xxxx"
+                oninput="this.value = this.value.replace(/[^0-9-]/g, '')" required />
 
             <h3>อีเมล</h3>
             <input type="email" name="email" placeholder="example@email.com" required />
