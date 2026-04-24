@@ -57,6 +57,14 @@ async def admin_checkin(request: Request, background_tasks: BackgroundTasks):
             email_recipients = []
 
             for sid in student_ids:
+                # ตรวจสอบว่าได้ลงทะเบียนเข้าร่วมกิจกรรมหรือไม่ (ถ้าไม่ได้ลง ไม่สามารถรับชั่วโมงได้)
+                cursor.execute(
+                    "SELECT Registration_ID FROM activity_registrations WHERE Activity_ID = %s AND Student_ID = %s",
+                    (activity_id, sid)
+                )
+                if not cursor.fetchone():
+                    continue
+
                 # เช็คว่าบันทึกไปแล้วหรือยัง
                 cursor.execute(
                     "SELECT Checkin_ID FROM activity_checkins WHERE Activity_ID = %s AND Student_ID = %s",

@@ -29,7 +29,7 @@ def apply_schema():
         CREATE TABLE IF NOT EXISTS activity_registrations (
             Registration_ID INT AUTO_INCREMENT PRIMARY KEY,
             Activity_ID INT NOT NULL,
-            Student_ID VARCHAR(255) NOT NULL,
+            Student_ID VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
             Registration_Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY (Activity_ID, Student_ID),
             CONSTRAINT fk_reg_activity FOREIGN KEY (Activity_ID) REFERENCES activities(Activity_ID) ON DELETE CASCADE,
