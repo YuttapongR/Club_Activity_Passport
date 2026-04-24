@@ -440,6 +440,19 @@ async def register_activity(request: Request):
 
     cursor = conn.cursor(dictionary=True)
     try:
+        # ดึง Club_ID ของกิจกรรมนี้
+        cursor.execute("SELECT Club_ID FROM activities WHERE Activity_ID = %s", (activity_id,))
+        activity = cursor.fetchone()
+        if not activity:
+            return {'status': 'error', 'message': 'ไม่พบกิจกรรมนี้'}
+            
+        club_id = activity['Club_ID']
+        
+        # ตรวจสอบว่าเป็นสมาชิกชมรมหรือไม่
+        cursor.execute("SELECT Member_ID FROM membership WHERE Club_ID = %s AND Student_ID = %s", (club_id, student_id))
+        if not cursor.fetchone():
+            return {'status': 'error', 'message': 'คุณต้องเข้าร่วมชมรมก่อน จึงจะสามารถกดเข้าร่วมกิจกรรมได้'}
+
         # Check if already registered
         cursor.execute("SELECT Registration_ID FROM activity_registrations WHERE Activity_ID = %s AND Student_ID = %s", (activity_id, student_id))
         if cursor.fetchone():

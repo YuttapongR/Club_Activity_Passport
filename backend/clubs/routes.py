@@ -70,15 +70,21 @@ async def create_club(
         conn.close()
 
 
-@router.get("/delete", response_class=HTMLResponse)
-def delete_club(id: str = None):
-    """ลบชมรม — รับ id จาก query string"""
-    if not id:
-        return HTMLResponse("Invalid request")
+@router.post("/delete")
+async def delete_club(request: Request):
+    """ลบชมรม — รับ id จาก JSON body"""
+    if request.session.get('role') != 'admin':
+        return {'status': 'error', 'message': 'Unauthorized'}
+
+    data = await request.json()
+    if not data or 'id' not in data:
+        return {'status': 'error', 'message': 'Missing club id'}
+        
+    id = data['id']
 
     conn = get_db_connection()
     if not conn:
-        return HTMLResponse("<script>alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้'); window.history.back();</script>")
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
     cursor = conn.cursor(dictionary=True)
     try:
@@ -90,12 +96,17 @@ def delete_club(id: str = None):
             if os.path.exists(img_path):
                 os.remove(img_path)
 
+        # Manually delete related data to avoid FK constraint issues if ON DELETE CASCADE is missing
+        cursor.execute("DELETE FROM activity_checkins WHERE Activity_ID IN (SELECT Activity_ID FROM activities WHERE Club_ID = %s)", (id,))
+        cursor.execute("DELETE FROM activity_registrations WHERE Activity_ID IN (SELECT Activity_ID FROM activities WHERE Club_ID = %s)", (id,))
+        cursor.execute("DELETE FROM activities WHERE Club_ID = %s", (id,))
+        
         cursor.execute("DELETE FROM club WHERE Club_ID = %s", (id,))
         conn.commit()
-        return HTMLResponse("<script>alert('ลบชมรมสำเร็จ'); window.location.href='/frontend/admin/Admin.html';</script>")
-    except Exception:
+        return {'status': 'success', 'message': 'ลบชมรมสำเร็จ'}
+    except Exception as e:
         conn.rollback()
-        return HTMLResponse("<script>alert('ลบชมรมไม่สำเร็จ'); window.location.href='/frontend/admin/Admin.html';</script>")
+        return {'status': 'error', 'message': str(e)}
     finally:
         cursor.close()
         conn.close()

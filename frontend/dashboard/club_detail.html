@@ -172,9 +172,11 @@
             }
         }
 
+        let isUserMember = false;
+
         function renderClub(res) {
             const club = res.data;
-            const isMember = res.is_member;
+            isUserMember = res.is_member;
             const currentMembers = res.current_members;
 
             // Header & Banner
@@ -191,7 +193,7 @@
 
             // Join Button Logic
             const joinBtn = document.getElementById('join-btn');
-            if (isMember) {
+            if (isUserMember) {
                 joinBtn.innerText = 'คุณเป็นสมาชิกแล้ว';
                 joinBtn.className = 'w-full bg-emerald-100 text-emerald-700 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2';
                 joinBtn.innerHTML = '<i class="fas fa-check"></i> คุณเป็นสมาชิกแล้ว';
@@ -253,6 +255,8 @@
                 let buttonHtml = '';
                 if (act.is_registered > 0) {
                     buttonHtml = `<button disabled class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-medium flex items-center gap-2"><i class="fas fa-check"></i> เข้าร่วมแล้ว</button>`;
+                } else if (!isUserMember) {
+                    buttonHtml = `<button disabled class="bg-slate-200 text-slate-500 px-4 py-2 rounded-xl font-medium cursor-not-allowed">กรุณาเข้าร่วมชมรมก่อน</button>`;
                 } else {
                     buttonHtml = `<button onclick="registerActivity(${act.Activity_ID})" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-medium transition shadow-md shadow-purple-200">เข้าร่วมกิจกรรม</button>`;
                 }
@@ -302,9 +306,9 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchClubDetails();
-            fetchActivities();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchClubDetails();
+            await fetchActivities();
         });
     </script>
 </body>
