@@ -111,6 +111,17 @@
                             <div id="club-status" class="text-2xl font-bold text-emerald-700">เปิดรับสมัคร</div>
                         </div>
                     </section>
+
+                    <!-- Activities Section -->
+                    <section class="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-purple-600 rounded-full"></span>
+                            กิจกรรมของชมรม
+                        </h2>
+                        <div id="activities-list" class="space-y-4">
+                            <div class="text-center text-slate-500 py-8">ไม่มีกิจกรรมในขณะนี้</div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Right Column: Actions -->
@@ -214,8 +225,87 @@
             }
         });
 
+        async function fetchActivities() {
+            try {
+                const response = await fetch(`/api/activities/list?club_id=${clubId}`);
+                const res = await response.json();
+                
+                if (res.status === 'success') {
+                    renderActivities(res.data);
+                }
+            } catch (error) {
+                console.error('Error fetching activities:', error);
+            }
+        }
+
+        function renderActivities(activities) {
+            const list = document.getElementById('activities-list');
+            if (!activities || activities.length === 0) {
+                list.innerHTML = '<div class="text-center text-slate-500 py-8">ไม่มีกิจกรรมในขณะนี้</div>';
+                return;
+            }
+
+            list.innerHTML = activities.map(act => {
+                const dateObj = new Date(act.Activity_Date);
+                const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                
+                let buttonHtml = '';
+                if (act.is_registered > 0) {
+                    buttonHtml = `<button disabled class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-medium flex items-center gap-2"><i class="fas fa-check"></i> เข้าร่วมแล้ว</button>`;
+                } else {
+                    buttonHtml = `<button onclick="registerActivity(${act.Activity_ID})" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-medium transition shadow-md shadow-purple-200">เข้าร่วมกิจกรรม</button>`;
+                }
+
+                return `
+                <div class="border border-slate-100 bg-slate-50 rounded-2xl p-6 hover:shadow-md transition">
+                    <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800 mb-1">${act.Activity_Name}</h4>
+                            <p class="text-slate-600 text-sm mb-3">${act.Description || 'ไม่มีคำอธิบาย'}</p>
+                            <div class="flex flex-wrap gap-3 text-sm text-slate-500">
+                                <span class="flex items-center gap-1"><i class="far fa-calendar-alt text-purple-500"></i> ${dateStr} เวลา ${timeStr}</span>
+                                <span class="flex items-center gap-1"><i class="far fa-clock text-orange-500"></i> ได้รับ ${act.Hours_Given} ชั่วโมง</span>
+                                <span class="flex items-center gap-1"><i class="fas fa-users text-blue-500"></i> ผู้เข้าร่วม ${act.registered_count || 0} คน</span>
+                            </div>
+                        </div>
+                        <div class="shrink-0 w-full sm:w-auto text-right">
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function registerActivity(activityId) {
+            if (!confirm('ยืนยันการเข้าร่วมกิจกรรมนี้?')) return;
+            
+            try {
+                const response = await fetch('/api/activities/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activity_id: activityId })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    alert('ลงทะเบียนเข้าร่วมกิจกรรมสำเร็จ!');
+                    fetchActivities(); // Refresh list
+                } else {
+                    alert(data.message || 'เกิดข้อผิดพลาด');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            }
+        }
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', fetchClubDetails);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchClubDetails();
+            fetchActivities();
+        });
     </script>
 </body>
 

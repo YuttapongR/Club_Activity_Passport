@@ -141,17 +141,17 @@ def get_attendees(request: Request, activity_id: str = None):
 
         club_id = act['Club_ID']
 
-        # ดึงสมาชิกชมรม + สถานะ checkin
+        # ดึงสมาชิกที่กดเข้าร่วมกิจกรรมนี้แล้ว (จาก activity_registrations) + สถานะ checkin
         sql = """
             SELECT u.Student_ID, u.Username, u.First_Name, u.Last_Name, u.Email,
                    CASE WHEN ac.Checkin_ID IS NOT NULL THEN 1 ELSE 0 END AS checked_in
-            FROM membership m
-            JOIN user u ON m.Student_ID = u.Student_ID
+            FROM activity_registrations ar
+            JOIN user u ON ar.Student_ID = u.Student_ID
             LEFT JOIN activity_checkins ac ON ac.Student_ID = u.Student_ID AND ac.Activity_ID = %s
-            WHERE m.Club_ID = %s
+            WHERE ar.Activity_ID = %s
             ORDER BY u.Student_ID
         """
-        cursor.execute(sql, (activity_id, club_id))
+        cursor.execute(sql, (activity_id, activity_id))
         members = cursor.fetchall()
 
         return {'status': 'success', 'data': members, 'count': len(members)}
@@ -329,21 +329,34 @@ async def delete_activity(request: Request):
 
 
 @router.get("/list")
-def get_activities(club_id: str = None):
-    """ดึงรายการกิจกรรมทั้งหมด"""
+def get_activities(request: Request, club_id: str = None):
+    """ดึงรายการกิจกรรมทั้งหมด พร้อมจำนวนผู้เข้าร่วม"""
     conn = get_db_connection()
     if not conn:
         return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
 
+    student_id = request.session.get('student_id')
     cursor = conn.cursor(dictionary=True)
     try:
         if club_id:
-            cursor.execute(
-                "SELECT * FROM activities WHERE Club_ID = %s ORDER BY Activity_Date DESC",
-                (club_id,)
-            )
+            sql = """
+                SELECT a.*, 
+                       (SELECT COUNT(*) FROM activity_registrations ar WHERE ar.Activity_ID = a.Activity_ID) as registered_count,
+                       (SELECT COUNT(*) FROM activity_registrations ar WHERE ar.Activity_ID = a.Activity_ID AND ar.Student_ID = %s) as is_registered
+                FROM activities a 
+                WHERE a.Club_ID = %s 
+                ORDER BY a.Activity_Date DESC
+            """
+            cursor.execute(sql, (student_id, club_id))
         else:
-            cursor.execute("SELECT * FROM activities ORDER BY Activity_Date DESC")
+            sql = """
+                SELECT a.*, 
+                       (SELECT COUNT(*) FROM activity_registrations ar WHERE ar.Activity_ID = a.Activity_ID) as registered_count,
+                       (SELECT COUNT(*) FROM activity_registrations ar WHERE ar.Activity_ID = a.Activity_ID AND ar.Student_ID = %s) as is_registered
+                FROM activities a 
+                ORDER BY a.Activity_Date DESC
+            """
+            cursor.execute(sql, (student_id,))
 
         activities = cursor.fetchall()
 
@@ -403,3 +416,43 @@ def get_user_summary(request: Request):
     finally:
         cursor.close()
         conn.close()
+
+# =============================================================================
+# User: เข้าร่วมกิจกรรม
+# =============================================================================
+
+@router.post("/register")
+async def register_activity(request: Request):
+    """ลงทะเบียนเข้าร่วมกิจกรรม"""
+    if 'student_id' not in request.session:
+        return {'status': 'error', 'message': 'กรุณาเข้าสู่ระบบก่อน'}
+
+    data = await request.json()
+    activity_id = data.get('activity_id')
+    if not activity_id:
+        return {'status': 'error', 'message': 'ไม่พบรหัสกิจกรรม'}
+
+    student_id = request.session['student_id']
+
+    conn = get_db_connection()
+    if not conn:
+        return {'status': 'error', 'message': 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'}
+
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Check if already registered
+        cursor.execute("SELECT Registration_ID FROM activity_registrations WHERE Activity_ID = %s AND Student_ID = %s", (activity_id, student_id))
+        if cursor.fetchone():
+            return {'status': 'error', 'message': 'คุณได้เข้าร่วมกิจกรรมนี้ไปแล้ว'}
+
+        # Insert registration
+        cursor.execute("INSERT INTO activity_registrations (Activity_ID, Student_ID) VALUES (%s, %s)", (activity_id, student_id))
+        conn.commit()
+        return {'status': 'success', 'message': 'เข้าร่วมกิจกรรมสำเร็จ'}
+    except Exception as e:
+        conn.rollback()
+        return {'status': 'error', 'message': str(e)}
+    finally:
+        cursor.close()
+        conn.close()
+

@@ -70,9 +70,9 @@ def join_club(request: Request, club_id: str = None):
         </script>""")
     except Exception as e:
         conn.rollback()
-        error_msg = str(e).replace("'", "\\'")
+        error_msg = str(e).replace("'", "\\'").replace('"', '\\"')
         return HTMLResponse(f"""<script>
-            alert('เกิดข้อผิดพลาด: {error_msg}');
+            alert('เกิดข้อผิดพลาดในการเข้าร่วม: {error_msg}');
             window.history.back();
         </script>""")
     finally:
